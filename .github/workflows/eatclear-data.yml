@@ -36,6 +36,11 @@ jobs:
         run: python3 -m unittest discover -s eatclear/tests -v
       - name: Build
         run: python3 eatclear/build.py --version "ci-${GITHUB_SHA::7}"
+      # 原文链接是否还能打开。部分政府网站可能不接受境外访问，
+      # 所以这里只提示、不阻断；发布前必须在本地运行一次（见 eatclear/README.md）。
+      - name: Check law links
+        continue-on-error: true
+        run: python3 eatclear/check_links.py
 
   release:
     needs: check

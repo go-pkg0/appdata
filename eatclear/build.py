@@ -24,11 +24,17 @@ import sqlite3
 import sys
 import unicodedata
 from pathlib import Path
+from urllib.parse import urlparse
 
 # 数据库结构版本。修改 schema.sql 时必须加 1，
 # 并同时修改 App 里 DataRepository.swift 的 supportedSchemaVersion。
 # App 会拒绝加载自己不认识的版本。
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# "懂法"文章的原文链接只能指向这些域名（含子域名），并且必须是 https。
+# gov.cn 覆盖国家法律法规数据库 flk.npc.gov.cn、中国人大网、中国政府网、市场监管总局、国家卫健委；
+# cfsa.net.cn 是食品安全国家标准数据检索平台；12315.cn 是全国 12315 平台。
+LINK_DOMAINS = ("gov.cn", "cfsa.net.cn", "12315.cn")
 
 # 这些说法会被识别出来，但标准里没有对应的数字定义。
 # App 会显示"这不是标准定义的声称"，而不是去做数值对照。
@@ -107,7 +113,21 @@ def check_date(row: dict, field: str) -> str | None:
     return value
 
 
-def parse_markdown(path: Path) -> tuple[dict[str, str], str]:
+def link_problem(url: str) -> str | None:
+    """检查原文链接，有问题时返回原因，没问题返回 None。"""
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        return "必须是 https 链接"
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return "缺少域名"
+    if not any(host == d or host.endswith("." + d) for d in LINK_DOMAINS):
+        return f"域名 {host} 不在允许的范围 {LINK_DOMAINS}"
+    return None
+
+
+def parse_markdown(path: Path) -> tuple[dict[str, str], list[str], str]:
+    """返回 (元数据, link 行列表, 正文)。link 可以写多行，其他键只能写一次。"""
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
         raise BuildError(f"{path.name}: 文件开头缺少 --- 元数据块")
@@ -116,14 +136,45 @@ def parse_markdown(path: Path) -> tuple[dict[str, str], str]:
     except ValueError:
         raise BuildError(f"{path.name}: 元数据块没有用 --- 结束") from None
     meta: dict[str, str] = {}
+    links: list[str] = []
     for line in header.splitlines():
         if not line.strip():
             continue
         if ":" not in line:
             raise BuildError(f"{path.name}: 元数据格式错误: {line!r}")
         key, value = line.split(":", 1)
-        meta[key.strip()] = value.strip()
-    return meta, body.strip()
+        key, value = key.strip(), value.strip()
+        if key == "link":
+            links.append(value)
+        elif key in meta:
+            raise BuildError(f"{path.name}: 元数据 {key} 重复")
+        else:
+            meta[key] = value
+    return meta, links, body.strip()
+
+
+def parse_link(path: Path, line: str) -> tuple[str, str]:
+    """把 "标题 | https://..." 拆成 (标题, 地址) 并检查地址。"""
+    if line.count("|") != 1:
+        raise BuildError(f"{path.name}: link 应写成 \"标题 | https://...\": {line!r}")
+    title, url = (part.strip() for part in line.split("|"))
+    if not title or not url:
+        raise BuildError(f"{path.name}: link 的标题和地址都不能为空: {line!r}")
+    problem = link_problem(url)
+    if problem:
+        raise BuildError(f"{path.name}: 链接 {url} {problem}")
+    return title, url
+
+
+def read_law_links(source: Path) -> list[tuple[str, str, str]]:
+    """读出所有文章的链接 (文章 id, 标题, 地址)，供 check_links.py 使用。"""
+    result = []
+    for path in sorted((source / "law").glob("*.md")):
+        meta, links, _ = parse_markdown(path)
+        for line in links:
+            title, url = parse_link(path, line)
+            result.append((meta.get("id", path.name), title, url))
+    return result
 
 
 def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) -> dict:
@@ -260,26 +311,43 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         require(r, "name", "nutrient")
         cur.execute("INSERT INTO nutrient_names VALUES (?,?,?)", (r["name"], normalize(r["name"]), r["nutrient"]))
 
-    # law articles
+    # law categories
     law_dir = SOURCE / "law"
+    category_ids: set[str] = set()
+    for r in read_csv("law/categories.csv"):
+        require(r, "id", "jurisdiction", "sort_order", "title", "summary")
+        if r["id"] in category_ids:
+            raise BuildError(f"{r['__line__']}: 重复的分类 id {r['id']}")
+        category_ids.add(r["id"])
+        cur.execute("INSERT INTO law_categories VALUES (?,?,?,?,?)",
+                    (r["id"], r["jurisdiction"], int(to_float(r, "sort_order")), r["title"], r["summary"]))
+
+    # law articles + links
     article_ids: set[str] = set()
     for path in sorted(law_dir.glob("*.md")):
-        meta, body = parse_markdown(path)
-        for field in ("id", "jurisdiction", "title", "summary", "refs", "updated_at"):
+        meta, links, body = parse_markdown(path)
+        for field in ("id", "jurisdiction", "category", "title", "summary", "updated_at"):
             if not meta.get(field):
                 raise BuildError(f"{path.name}: 元数据缺少 {field}")
         if meta["id"] in article_ids:
             raise BuildError(f"{path.name}: 重复的文章 id {meta['id']}")
         article_ids.add(meta["id"])
+        if meta["category"] not in category_ids:
+            raise BuildError(f"{path.name}: 分类 {meta['category']} 不在 law/categories.csv 里")
         try:
             dt.date.fromisoformat(meta["updated_at"])
         except ValueError:
             raise BuildError(f"{path.name}: updated_at 应为 YYYY-MM-DD") from None
+        if not links:
+            raise BuildError(f"{path.name}: 至少要有一个原文链接（link: 标题 | https://...）")
         cur.execute(
             "INSERT INTO law_articles VALUES (?,?,?,?,?,?,?,?)",
-            (meta["id"], meta["jurisdiction"], int(meta.get("sort_order", "0")), meta["title"],
-             meta["summary"], body, meta["refs"], meta["updated_at"]),
+            (meta["id"], meta["jurisdiction"], meta["category"], int(meta.get("sort_order", "0")),
+             meta["title"], meta["summary"], body, meta["updated_at"]),
         )
+        for order, line in enumerate(links, start=1):
+            title, url = parse_link(path, line)
+            cur.execute("INSERT INTO law_links VALUES (?,?,?,?)", (meta["id"], order, title, url))
 
     generated_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     cur.executemany(
@@ -295,7 +363,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
     counts = {
         table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         for table in ("substances", "aliases", "food_categories", "limits", "claim_rules",
-                      "claim_patterns", "nutrient_names", "nrv", "law_articles")
+                      "claim_patterns", "nutrient_names", "nrv",
+                      "law_categories", "law_articles", "law_links")
     }
     conn.execute("VACUUM")
     conn.close()

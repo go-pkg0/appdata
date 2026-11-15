@@ -121,6 +121,105 @@ class TestBuild(BuildTestCase):
         (self.source / "law" / "bad.md").write_text("---\nid: bad\n---\n正文", encoding="utf-8")
         self.assertEqual(self.run_build(), 1)
 
+    def write_article(self, *links, category="label"):
+        meta = [
+            "id: test-x", "jurisdiction: CN", f"category: {category}", "sort_order: 99",
+            "title: 测试", "summary: 测试", "updated_at: 2026-11-14",
+        ] + [f"link: {link}" for link in links]
+        (self.source / "law" / "zz-test.md").write_text(
+            "---\n" + "\n".join(meta) + "\n---\n正文", encoding="utf-8")
+
+    def test_law_links_built(self):
+        self.write_article("国家法律法规数据库 | https://flk.npc.gov.cn/",
+                           "标准检索 | https://sppt.cfsa.net.cn:8086/db")
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        rows = conn.execute(
+            "SELECT sort_order, title, url FROM law_links WHERE article_id = 'test-x' ORDER BY sort_order"
+        ).fetchall()
+        self.assertEqual(rows, [(1, "国家法律法规数据库", "https://flk.npc.gov.cn/"),
+                                (2, "标准检索", "https://sppt.cfsa.net.cn:8086/db")])
+        # 每篇文章都至少有一个链接，分类至少 4 个
+        orphan = conn.execute(
+            "SELECT COUNT(*) FROM law_articles a WHERE NOT EXISTS "
+            "(SELECT 1 FROM law_links l WHERE l.article_id = a.id)").fetchone()[0]
+        self.assertEqual(orphan, 0)
+        self.assertGreaterEqual(conn.execute("SELECT COUNT(*) FROM law_categories").fetchone()[0], 4)
+
+    def test_law_without_link_fails(self):
+        self.write_article()
+        self.assertEqual(self.run_build(), 1)
+
+    def test_law_http_link_fails(self):
+        self.write_article("人大网 | http://www.npc.gov.cn/")
+        self.assertEqual(self.run_build(), 1)
+
+    def test_law_link_domain_not_allowed_fails(self):
+        for url in ("https://law.pkulaw.com/x", "https://gov.cn.example.com/", "https://evilgov.cn/"):
+            with self.subTest(url=url):
+                self.write_article(f"转载 | {url}")
+                self.assertEqual(self.run_build(), 1)
+
+    def test_law_link_format_error_fails(self):
+        self.write_article("没有竖线 https://flk.npc.gov.cn/")
+        self.assertEqual(self.run_build(), 1)
+
+    def test_law_unknown_category_fails(self):
+        self.write_article("数据库 | https://flk.npc.gov.cn/", category="nope")
+        self.assertEqual(self.run_build(), 1)
+
+
+class TestLinkDomain(unittest.TestCase):
+    def test_allowed(self):
+        for url in ("https://flk.npc.gov.cn/detail", "https://www.gov.cn/x.htm",
+                    "https://sppt.cfsa.net.cn:8086/db", "https://www.12315.cn/", "https://gov.cn/"):
+            with self.subTest(url=url):
+                self.assertIsNone(build.link_problem(url))
+
+    def test_rejected(self):
+        for url in ("http://www.gov.cn/", "https://evilgov.cn/", "https://gov.cn.example.com/",
+                    "ftp://www.gov.cn/", "https:///nohost", "flk.npc.gov.cn"):
+            with self.subTest(url=url):
+                self.assertIsNotNone(build.link_problem(url))
+
+
+class TestCheckLinks(unittest.TestCase):
+    def setUp(self):
+        import check_links
+        self.check_links = check_links
+
+    def test_reports_broken_links(self):
+        links = [("cn-01", "好的", "https://a.gov.cn/"), ("cn-02", "坏的", "https://b.gov.cn/")]
+
+        def fake_fetch(url):
+            if "a.gov.cn" in url:
+                return 200, "https://a.gov.cn/"
+            raise OSError("连接被拒绝")
+
+        failures = self.check_links.check_all(links, fetch=fake_fetch)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("cn-02", failures[0])
+
+    def test_http_error_status_is_failure(self):
+        failures = self.check_links.check_all(
+            [("cn-01", "404", "https://a.gov.cn/")], fetch=lambda url: (404, url))
+        self.assertEqual(len(failures), 1)
+
+    def test_redirect_off_allowed_domain_is_failure(self):
+        failures = self.check_links.check_all(
+            [("cn-01", "跳走", "https://a.gov.cn/")], fetch=lambda url: (200, "https://ads.example.com/"))
+        self.assertEqual(len(failures), 1)
+
+    def test_bot_challenge_is_warning_not_failure(self):
+        # 部分政府网站对脚本返回 403/412 的验证页，浏览器可以正常打开
+        warnings = []
+        failures = self.check_links.check_all(
+            [("cn-01", "卫健委", "https://www.nhc.gov.cn/x.shtml")],
+            fetch=lambda url: (412, url), warnings=warnings)
+        self.assertEqual(failures, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("浏览器", warnings[0])
+
 
 if __name__ == "__main__":
     unittest.main()

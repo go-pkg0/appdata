@@ -107,14 +107,32 @@ CREATE TABLE nrv (
     PRIMARY KEY (jurisdiction, nutrient, standard_version)
 );
 
--- "懂法" 科普文章
-CREATE TABLE law_articles (
+-- "懂法" 分类，比如 食品标签、广告法
+CREATE TABLE law_categories (
     id           TEXT PRIMARY KEY,
     jurisdiction TEXT NOT NULL,
     sort_order   INTEGER NOT NULL DEFAULT 0,
     title        TEXT NOT NULL,
+    summary      TEXT NOT NULL
+);
+
+-- "懂法" 科普文章
+CREATE TABLE law_articles (
+    id           TEXT PRIMARY KEY,
+    jurisdiction TEXT NOT NULL,
+    category     TEXT NOT NULL REFERENCES law_categories(id),
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    title        TEXT NOT NULL,
     summary      TEXT NOT NULL,
     body_md      TEXT NOT NULL,
-    refs         TEXT NOT NULL,      -- 参考法规，纯文本
-    updated_at   TEXT NOT NULL
+    updated_at   TEXT NOT NULL       -- 只有日期 YYYY-MM-DD，不换算时区
+);
+
+-- 文章末尾的原文链接（法律、标准原文的权威发布页面）
+CREATE TABLE law_links (
+    article_id   TEXT NOT NULL REFERENCES law_articles(id),
+    sort_order   INTEGER NOT NULL,
+    title        TEXT NOT NULL,
+    url          TEXT NOT NULL,      -- https，域名在 build.py 的 LINK_DOMAINS 里
+    PRIMARY KEY (article_id, sort_order)
 );
