@@ -19,6 +19,7 @@ import csv
 import datetime as dt
 import hashlib
 import json
+import re
 import shutil
 import sqlite3
 import sys
@@ -42,6 +43,24 @@ CLAIM_NOTE_KINDS = ("comparative", "non_regulated")
 LABEL_PHRASE_KINDS = ("allergen_section", "allergen_may_contain", "audience",
                       "notice", "standard_code", "product_name")
 ALLERGEN_TERM_KINDS = ("statement", "ingredient")
+
+NOTE_SUBJECT_TYPES = ("nutrient", "allergen", "function_class", "substance", "tip")
+
+# 说明的依据分三级，每一级的链接只能指向这些域名（含子域名），并且必须是 https
+TIER_DOMAINS = {
+    1: LINK_DOMAINS + ("cnsoc.org",),                       # 国标、膳食指南
+    2: ("who.int", "fao.org", "europa.eu", "fda.gov"),      # WHO/IARC、JECFA、EFSA、FDA
+    3: ("doi.org",),                                         # 期刊综述只收 DOI 链接
+}
+STUDY_TYPES = ("系统综述", "荟萃分析")
+# 级别 3 的论文发表超过这么多年，标为"较早的研究"
+DATED_AFTER_YEARS = 10
+# App 自己的文案里不用这些词。出现时只警告，不让构建失败
+BANNED_WORDS = ("不安全", "安全", "风险", "有害", "不合格", "合格", "超标")
+# 引号和书名号里的内容是引用原文，不检查
+_QUOTED = re.compile("“[^”]*”|\"[^\"]*\"|「[^」]*」|《[^》]*》")
+# 长的词放前面，"不安全"不会被拆成"不"和"安全"
+_BANNED = re.compile("|".join(sorted(BANNED_WORDS, key=len, reverse=True)))
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source"
@@ -67,8 +86,8 @@ def normalize(text: str) -> str:
     return "".join(ch for ch in text if not ch.isspace() and ch not in "​‌‍﻿")
 
 
-def read_csv(name: str) -> list[dict[str, str]]:
-    path = SOURCE / name
+def read_csv(name: str, source: Path | None = None) -> list[dict[str, str]]:
+    path = (source or SOURCE) / name
     if not path.exists():
         raise BuildError(f"缺少源文件: {path}")
     with path.open(encoding="utf-8", newline="") as f:
@@ -116,7 +135,18 @@ def check_date(row: dict, field: str) -> str | None:
     return value
 
 
-def link_problem(url: str) -> str | None:
+def current_year() -> int:
+    """构建年份，按 UTC 计。单独成函数，测试里可以替换。"""
+    return dt.datetime.now(dt.timezone.utc).year
+
+
+def banned_words_in(text: str) -> list[str]:
+    """返回出现在引号（“”""「」）和书名号（《》）外面的禁用词，按出现顺序，不重复。"""
+    outside = _QUOTED.sub("", text)
+    return list(dict.fromkeys(_BANNED.findall(outside)))
+
+
+def link_problem(url: str, domains: tuple[str, ...] = LINK_DOMAINS) -> str | None:
     """检查原文链接，有问题时返回原因，没问题返回 None。"""
     parsed = urlparse(url)
     if parsed.scheme != "https":
@@ -124,8 +154,8 @@ def link_problem(url: str) -> str | None:
     host = (parsed.hostname or "").lower()
     if not host:
         return "缺少域名"
-    if not any(host == d or host.endswith("." + d) for d in LINK_DOMAINS):
-        return f"域名 {host} 不在允许的范围 {LINK_DOMAINS}"
+    if not any(host == d or host.endswith("." + d) for d in domains):
+        return f"域名 {host} 不在允许的范围 {domains}"
     return None
 
 
@@ -180,6 +210,12 @@ def read_law_links(source: Path) -> list[tuple[str, str, str]]:
     return result
 
 
+def read_note_links(source: Path) -> list[tuple[str, str, str]]:
+    """读出所有说明依据的链接 (说明 id, 标题, 地址)，供 check_links.py 使用。"""
+    return [(r["note_id"], r["title"], r["url"])
+            for r in read_csv("note_sources.csv", source) if r.get("url")]
+
+
 def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) -> dict:
     if db_path.exists():
         db_path.unlink()
@@ -187,14 +223,17 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
     cur = conn.cursor()
     unverified: dict[str, int] = {}
+    warnings: list[str] = []
 
     # substances
     substance_ids: set[str] = set()
+    function_classes: set[str] = set()
     for r in read_csv("substances.csv"):
         require(r, "id", "name_zh", "function_class")
         if r["id"] in substance_ids:
             raise BuildError(f"{r['__line__']}: 重复的物质 id {r['id']}")
         substance_ids.add(r["id"])
+        function_classes.add(r["function_class"])
         roles = r.get("roles") or "additive"
         if roles not in SUBSTANCE_ROLES:
             raise BuildError(f"{r['__line__']}: roles 只能是 {' / '.join(SUBSTANCE_ROLES)}，现在是 {roles!r}")
@@ -328,8 +367,10 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         cur.execute("INSERT INTO claim_patterns VALUES (?,?,?,?)", (r["jurisdiction"], r["pattern"], norm, r["claim_key"]))
 
     # nutrient names
+    nutrient_keys: set[str] = set()
     for r in read_csv("nutrient_names.csv"):
         require(r, "name", "nutrient")
+        nutrient_keys.add(r["nutrient"])
         cur.execute("INSERT INTO nutrient_names VALUES (?,?,?)", (r["name"], normalize(r["name"]), r["nutrient"]))
 
     # settings
@@ -380,6 +421,69 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
             raise BuildError(f"{r['__line__']}: {r['kind']} 里的 {r['term']!r} 重复")
         term_keys.add((norm, r["kind"]))
         cur.execute("INSERT INTO allergen_terms VALUES (?,?,?,?)", (r["term"], norm, r["allergen_key"], r["kind"]))
+
+    # notes：大白话说明。subject_key 必须指向已有的营养素、致敏物质、功能类别或物质
+    subject_keys = {
+        "nutrient": nutrient_keys,
+        "allergen": allergen_keys,
+        "function_class": function_classes,
+        "substance": substance_ids,
+    }
+    note_types: dict[str, str] = {}
+    note_subjects: set[tuple[str, str]] = set()
+    for r in read_csv("notes.csv"):
+        require(r, "id", "subject_type", "subject_key", "title", "body")
+        if r["id"] in note_types:
+            raise BuildError(f"{r['__line__']}: 重复的说明 id {r['id']}")
+        subject_type = r["subject_type"]
+        if subject_type not in NOTE_SUBJECT_TYPES:
+            raise BuildError(f"{r['__line__']}: subject_type 只能是 {' / '.join(NOTE_SUBJECT_TYPES)}，现在是 {subject_type!r}")
+        if subject_type != "tip" and r["subject_key"] not in subject_keys[subject_type]:
+            raise BuildError(f"{r['__line__']}: {subject_type} 里没有 {r['subject_key']!r}")
+        if (subject_type, r["subject_key"]) in note_subjects:
+            raise BuildError(f"{r['__line__']}: {subject_type} {r['subject_key']} 已经有说明了")
+        note_subjects.add((subject_type, r["subject_key"]))
+        note_types[r["id"]] = subject_type
+        verified = to_flag(r, "verified")
+        if not verified:
+            unverified["notes"] = unverified.get("notes", 0) + 1
+        for field, label in (("title", "标题"), ("body", "正文")):
+            for word in banned_words_in(r[field]):
+                warnings.append(f"{r['__line__']}: 说明 {r['id']} 的{label}里出现“{word}”，请改写或放进引号")
+        cur.execute("INSERT INTO notes VALUES (?,?,?,?,?,?)",
+                    (r["id"], subject_type, r["subject_key"], r["title"], r["body"], verified))
+
+    # note sources：每条说明的依据。tier 决定链接能用的域名；sort_order 按每条说明在文件里的先后生成
+    this_year = current_year()
+    source_counts: dict[str, int] = {}
+    for r in read_csv("note_sources.csv"):
+        require(r, "note_id", "tier", "org", "title", "year", "url", "method")
+        if r["note_id"] not in note_types:
+            raise BuildError(f"{r['__line__']}: 未知的说明 id {r['note_id']}")
+        try:
+            tier = int(r["tier"])
+            year = int(r["year"])
+        except ValueError:
+            raise BuildError(f"{r['__line__']}: tier 和 year 必须是整数") from None
+        if tier not in TIER_DOMAINS:
+            raise BuildError(f"{r['__line__']}: tier 只能是 1 / 2 / 3，现在是 {tier}")
+        problem = link_problem(r["url"], TIER_DOMAINS[tier])
+        if problem:
+            raise BuildError(f"{r['__line__']}: 级别 {tier} 的链接 {r['url']} {problem}")
+        study_type = r.get("study_type") or None
+        if tier == 3 and study_type not in STUDY_TYPES:
+            raise BuildError(f"{r['__line__']}: 级别 3 的 study_type 只能是 {' / '.join(STUDY_TYPES)}，现在是 {study_type!r}")
+        is_dated = int(tier == 3 and this_year - year > DATED_AFTER_YEARS)
+        verified = to_flag(r, "verified")
+        if not verified:
+            unverified["note_sources"] = unverified.get("note_sources", 0) + 1
+        order = source_counts[r["note_id"]] = source_counts.get(r["note_id"], 0) + 1
+        cur.execute("INSERT INTO note_sources VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["note_id"], order, tier, r["org"], r["title"], year, r["url"], r["method"],
+                     study_type, is_dated, verified))
+    for note_id, subject_type in note_types.items():
+        if subject_type != "tip" and note_id not in source_counts:
+            raise BuildError(f"notes.csv: 说明 {note_id} 没有依据（小知识以外的说明至少要有一条）")
 
     # law categories
     law_dir = SOURCE / "law"
@@ -435,7 +539,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         for table in ("substances", "aliases", "food_categories", "limits", "claim_rules",
                       "claim_notes", "claim_patterns", "nutrient_names", "nrv",
                       "settings", "label_phrases", "allergens", "allergen_terms",
-                      "law_categories", "law_articles", "law_links")
+                      "notes", "note_sources", "law_categories", "law_articles", "law_links")
     }
     conn.execute("VACUUM")
     conn.close()
@@ -452,6 +556,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         "sha256": hashlib.sha256(data).hexdigest(),
         "counts": counts,
         "unverified": unverified,
+        # 禁用词警告：不让构建失败，只提醒改写
+        "warnings": warnings,
     }
 
 
@@ -489,6 +595,10 @@ def main(argv: list[str] | None = None) -> int:
         print("\n提示: 以下数据还没有对照原文核实（verified=0），App 会显示\"待核实\"标记:", file=sys.stderr)
         for table, n in manifest["unverified"].items():
             print(f"  {table}: {n} 条", file=sys.stderr)
+    if manifest["warnings"]:
+        print("\n警告: 以下文字里有不该出现的词:", file=sys.stderr)
+        for line in manifest["warnings"]:
+            print(f"  {line}", file=sys.stderr)
     return 0
 
 

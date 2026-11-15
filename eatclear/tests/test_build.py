@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 DATA_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(DATA_DIR))
@@ -208,11 +209,250 @@ class TestSchema3(BuildTestCase):
         conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
         self.assertEqual(conn.execute("SELECT value FROM settings WHERE key='sugar_cube_grams'").fetchone()[0], "4.5")
 
+    def test_claim_note_kind_checked(self):
+        self.append("claim_notes.csv", "CN,some_claim,某说法,bad_kind,测试")
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_duplicate_keys_in_new_tables_fail(self):
+        for name, line in (
+            ("settings.csv", "sugar_cube_grams,4.5,重复"),
+            ("allergens.csv", "milk,牛奶,1\nmilk,牛奶,2"),
+            ("label_phrases.csv", "notice,请注意\nnotice,请 注意"),
+            ("claim_notes.csv", "CN,sucrose_free,0蔗糖,non_regulated,重复"),
+        ):
+            with self.subTest(file=name):
+                path = self.source / name
+                original = path.read_text(encoding="utf-8")
+                self.append(name, line)
+                self.assertNotEqual(self.run_build(), 0)
+                path.write_text(original, encoding="utf-8")
+
     def test_manifest_counts_new_tables(self):
         self.assertEqual(self.run_build(), 0)
         counts = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))["counts"]
         for table in ("claim_notes", "settings", "label_phrases", "allergens", "allergen_terms"):
             self.assertIn(table, counts)
+
+
+NOTES_HEADER = "id,subject_type,subject_key,title,body,verified"
+SOURCES_HEADER = "note_id,tier,org,title,year,url,method,study_type,verified"
+NOTE = "n-sodium,nutrient,sodium,钠,钠主要来自食盐。,0"
+SRC1 = ("n-sodium,1,国家卫生健康委员会,GB 28050 预包装食品营养标签通则,2011,https://sppt.cfsa.net.cn/,"
+        "用每100克的钠含量和营养素参考值相比,,0")
+TIER2_URL = "https://www.who.int/publications/i/item/9789240073647"
+TIER3_URL = "https://doi.org/10.1000/xyz123"
+
+
+def source_row(tier=1, year=2011, url="https://sppt.cfsa.net.cn/", method="用每100克的钠含量和营养素参考值相比",
+               study_type="", verified=0, note_id="n-sodium"):
+    return f"{note_id},{tier},某机构,某文件,{year},{url},{method},{study_type},{verified}"
+
+
+class TestNotes(BuildTestCase):
+    def setUp(self):
+        super().setUp()
+        self.write_rows("notes.csv", NOTES_HEADER, NOTE)
+        self.write_rows("note_sources.csv", SOURCES_HEADER, SRC1)
+
+    def write_rows(self, name, header, *rows):
+        (self.source / name).write_text("\n".join([header, *rows]) + "\n", encoding="utf-8")
+
+    def set_sources(self, *rows):
+        self.write_rows("note_sources.csv", SOURCES_HEADER, *rows)
+
+    def set_notes(self, *rows):
+        self.write_rows("notes.csv", NOTES_HEADER, *rows)
+
+    def manifest(self):
+        return json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))
+
+    def db(self):
+        return sqlite3.connect(self.out / "eatclear-data.sqlite")
+
+    def test_valid_note_builds(self):
+        self.assertEqual(self.run_build(), 0)
+        conn = self.db()
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM notes").fetchone()[0], 1)
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM note_sources").fetchone()[0], 1)
+        self.assertEqual(conn.execute("SELECT sort_order FROM note_sources").fetchone()[0], 1)
+        counts = self.manifest()["counts"]
+        self.assertEqual((counts["notes"], counts["note_sources"]), (1, 1))
+        self.assertEqual(self.manifest()["unverified"]["notes"], 1)
+        self.assertEqual(self.manifest()["unverified"]["note_sources"], 1)
+
+    def test_sort_order_follows_file_order_per_note(self):
+        self.set_notes(NOTE, "n-calcium,nutrient,calcium,钙,钙对骨骼有用。,0")
+        self.set_sources(SRC1, source_row(note_id="n-calcium"),
+                         source_row(tier=2, url=TIER2_URL, year=2020))
+        self.assertEqual(self.run_build(), 0)
+        rows = self.db().execute(
+            "SELECT note_id, sort_order, tier FROM note_sources ORDER BY note_id, sort_order").fetchall()
+        self.assertEqual(rows, [("n-calcium", 1, 1), ("n-sodium", 1, 1), ("n-sodium", 2, 2)])
+
+    def test_non_tip_note_needs_source(self):
+        self.set_sources()
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_tip_needs_no_source(self):
+        self.set_notes("t-1,tip,t-1,小知识,这是一条小知识。,0")
+        self.set_sources()
+        self.assertEqual(self.run_build(), 0)
+
+    def test_unknown_subject_rejected(self):
+        self.set_notes("n-x,nutrient,not_a_nutrient,某,说明。,0")
+        self.set_sources(source_row(note_id="n-x"))
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_subject_keys_checked_per_type(self):
+        self.append("allergens.csv", "milk,牛奶,1")
+        cases = {
+            "allergen": ("milk", "not_an_allergen"),
+            "function_class": ("防腐剂", "不存在的类别"),
+            "substance": ("INS202", "INS999"),
+        }
+        for subject_type, (good, bad) in cases.items():
+            for key, expected_ok in ((good, True), (bad, False)):
+                with self.subTest(subject_type=subject_type, key=key):
+                    self.set_notes(f"n-x,{subject_type},{key},某,说明。,0")
+                    self.set_sources(source_row(note_id="n-x"))
+                    code = self.run_build()
+                    self.assertEqual(code == 0, expected_ok)
+
+    def test_unknown_subject_type_rejected(self):
+        self.set_notes("n-x,mineral,sodium,某,说明。,0")
+        self.set_sources(source_row(note_id="n-x"))
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_duplicate_note_id_or_subject_rejected(self):
+        for second in ("n-sodium,nutrient,calcium,钙,说明。,0",      # id 重复
+                       "n-other,nutrient,sodium,钠,说明。,0"):       # 同一个主题重复
+            with self.subTest(second=second):
+                self.set_notes(NOTE, second)
+                self.assertNotEqual(self.run_build(), 0)
+
+    def test_source_for_unknown_note_rejected(self):
+        self.set_sources(SRC1, source_row(note_id="n-missing"))
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_bad_flags_and_year_rejected(self):
+        for row in (source_row(verified="yes"), source_row(year="去年"), source_row(tier=4), source_row(tier="一")):
+            with self.subTest(row=row):
+                self.set_sources(row)
+                self.assertNotEqual(self.run_build(), 0)
+        self.set_notes("n-sodium,nutrient,sodium,钠,钠主要来自食盐。,yes")
+        self.set_sources(SRC1)
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_tier_domain_enforced(self):
+        cases = (
+            (3, TIER2_URL),                                  # 级别 3 只收 doi.org
+            (2, "https://doi.org/10.1000/xyz123"),           # 级别 2 不收 doi.org
+            (1, "https://www.who.int/x"),                    # 级别 1 不收 who.int
+            (2, "http://www.who.int/x"),                     # 必须 https
+        )
+        for tier, url in cases:
+            with self.subTest(tier=tier, url=url):
+                study = "系统综述" if tier == 3 else ""
+                self.set_sources(source_row(tier=tier, url=url, study_type=study))
+                self.assertNotEqual(self.run_build(), 0)
+
+    def test_tier_domains_accepted(self):
+        for tier, url, study in ((1, "https://www.cnsoc.org/x", ""), (1, "https://www.nhc.gov.cn/x", ""),
+                                 (2, "https://www.efsa.europa.eu/x", ""), (2, "https://www.fda.gov/x", ""),
+                                 (3, TIER3_URL, "系统综述")):
+            with self.subTest(tier=tier, url=url):
+                self.set_sources(source_row(tier=tier, url=url, study_type=study, year=2020))
+                self.assertEqual(self.run_build(), 0)
+
+    def test_tier3_needs_study_type(self):
+        for study in ("", "队列研究"):
+            with self.subTest(study_type=study):
+                self.set_sources(source_row(tier=3, url=TIER3_URL, study_type=study, year=2020))
+                self.assertNotEqual(self.run_build(), 0)
+        for study in ("系统综述", "荟萃分析"):
+            with self.subTest(study_type=study):
+                self.set_sources(source_row(tier=3, url=TIER3_URL, study_type=study, year=2020))
+                self.assertEqual(self.run_build(), 0)
+
+    def test_tier3_dated_flag(self):
+        with mock.patch.object(build, "current_year", return_value=2030):
+            for year, expected in ((2019, 1), (2020, 0)):      # 构建年份 - 11 / - 10
+                with self.subTest(year=year):
+                    self.set_sources(source_row(tier=3, url=TIER3_URL, study_type="系统综述", year=year))
+                    self.assertEqual(self.run_build(), 0)
+                    self.assertEqual(self.db().execute("SELECT is_dated FROM note_sources").fetchone()[0], expected)
+            # 级别 1 年份再老也不算过时
+            self.set_sources(source_row(tier=1, year=1990))
+            self.assertEqual(self.run_build(), 0)
+            self.assertEqual(self.db().execute("SELECT is_dated FROM note_sources").fetchone()[0], 0)
+
+    def test_current_year_is_utc_year(self):
+        import datetime
+        self.assertEqual(build.current_year(), datetime.datetime.now(datetime.timezone.utc).year)
+
+    def test_method_required(self):
+        self.set_sources(source_row(method=""))
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_banned_word_warns_not_fails(self):
+        self.set_notes("n-sodium,nutrient,sodium,钠,这种成分有害。,0")
+        self.assertEqual(self.run_build(), 0)
+        warnings = self.manifest()["warnings"]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("n-sodium", warnings[0])
+        self.assertIn("有害", warnings[0])
+
+    def test_banned_word_in_title_warns(self):
+        self.set_notes("n-sodium,nutrient,sodium,钠的风险,钠主要来自食盐。,0")
+        self.assertEqual(self.run_build(), 0)
+        warnings = self.manifest()["warnings"]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("风险", warnings[0])
+
+    def test_banned_word_inside_quotes_ok(self):
+        self.set_notes("n-sodium,nutrient,sodium,钠,IARC 把它列为“可能对人类致癌”，《食品安全法》另有规定。,0")
+        self.assertEqual(self.run_build(), 0)
+        self.assertEqual(self.manifest()["warnings"], [])
+
+    def test_warnings_key_always_present(self):
+        self.assertEqual(self.run_build(), 0)
+        self.assertEqual(self.manifest()["warnings"], [])
+
+
+class TestBannedWords(unittest.TestCase):
+    def test_plain_hits(self):
+        self.assertEqual(build.banned_words_in("这种成分有害，而且超标。"), ["有害", "超标"])
+
+    def test_longest_word_wins_and_deduplicates(self):
+        self.assertEqual(build.banned_words_in("不安全。不安全。"), ["不安全"])
+        self.assertEqual(build.banned_words_in("不合格"), ["不合格"])
+        self.assertEqual(build.banned_words_in("安全和合格"), ["安全", "合格"])
+
+    def test_quoted_text_is_skipped(self):
+        for text in ("“有害”", "\"有害\"", "「有害」", "《食品安全法》"):
+            with self.subTest(text=text):
+                self.assertEqual(build.banned_words_in(text), [])
+
+    def test_text_outside_quotes_still_checked(self):
+        self.assertEqual(build.banned_words_in("《食品安全法》说这样有害"), ["有害"])
+
+    def test_clean_text(self):
+        self.assertEqual(build.banned_words_in("钠主要来自食盐。"), [])
+
+
+class TestNoteLinks(BuildTestCase):
+    def test_read_note_links(self):
+        (self.source / "notes.csv").write_text(f"{NOTES_HEADER}\n{NOTE}\n", encoding="utf-8")
+        (self.source / "note_sources.csv").write_text(f"{SOURCES_HEADER}\n{SRC1}\n", encoding="utf-8")
+        self.assertEqual(build.read_note_links(self.source), [
+            ("n-sodium", "GB 28050 预包装食品营养标签通则", "https://sppt.cfsa.net.cn/")])
+
+    def test_shipped_note_files_have_headers(self):
+        self.assertEqual(build.read_note_links(DATA_DIR / "source"), [])
+        for name, header in (("notes.csv", NOTES_HEADER), ("note_sources.csv", SOURCES_HEADER)):
+            with self.subTest(file=name):
+                first = (DATA_DIR / "source" / name).read_text(encoding="utf-8").splitlines()[0]
+                self.assertEqual(first, header)
 
 
 class TestLinkDomain(unittest.TestCase):
@@ -265,6 +505,24 @@ class TestCheckLinks(unittest.TestCase):
         self.assertEqual(failures, [])
         self.assertEqual(len(warnings), 1)
         self.assertIn("浏览器", warnings[0])
+
+    def test_note_links_may_redirect_to_other_https_domains(self):
+        # DOI 链接会跳转到出版社的网站，所以说明的链接只要求跳转后仍是 https
+        links = [("n-1", "论文", "https://doi.org/10.1000/xyz123")]
+        failures = self.check_links.check_all(
+            links, fetch=lambda url: (200, "https://publisher.example.com/paper"), strict_redirects=False)
+        self.assertEqual(failures, [])
+        failures = self.check_links.check_all(
+            links, fetch=lambda url: (200, "http://publisher.example.com/paper"), strict_redirects=False)
+        self.assertEqual(len(failures), 1)
+
+    def test_collect_links_includes_notes(self):
+        with mock.patch.object(build, "read_law_links", return_value=[("a", "法", "https://a.gov.cn/")]), \
+             mock.patch.object(build, "read_note_links",
+                               return_value=[("n", "论文", "https://doi.org/1"), ("n2", "同一篇", "https://doi.org/1")]):
+            law, notes = self.check_links.collect_links()
+        self.assertEqual(law, [("a", "法", "https://a.gov.cn/")])
+        self.assertEqual(notes, [("n", "论文", "https://doi.org/1")])
 
 
 if __name__ == "__main__":

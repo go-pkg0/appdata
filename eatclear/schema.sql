@@ -186,3 +186,32 @@ CREATE TABLE allergen_terms (
     kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient')),
     PRIMARY KEY (term_norm, kind)
 );
+
+-- 大白话说明：营养素、致敏物质、功能类别、添加剂的解释和小知识
+-- subject_key：nutrient 为营养素 key，allergen 为致敏物质 key，function_class 为功能类别名，
+-- substance 为物质 id，tip 为小知识自己的 id
+CREATE TABLE notes (
+    id           TEXT PRIMARY KEY,
+    subject_type TEXT NOT NULL CHECK (subject_type IN ('nutrient', 'allergen', 'function_class', 'substance', 'tip')),
+    subject_key  TEXT NOT NULL,
+    title        TEXT NOT NULL,
+    body         TEXT NOT NULL,     -- 大白话说明，2~4 句
+    verified     INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (subject_type, subject_key)
+);
+
+-- 说明的依据。tier 1：国标、膳食指南；2：WHO/IARC、JECFA、EFSA、FDA 等机构；3：期刊综述（只收 DOI 链接）
+CREATE TABLE note_sources (
+    note_id    TEXT NOT NULL REFERENCES notes(id),
+    sort_order INTEGER NOT NULL,
+    tier       INTEGER NOT NULL CHECK (tier IN (1, 2, 3)),
+    org        TEXT NOT NULL,       -- 机构或期刊
+    title      TEXT NOT NULL,       -- 文件名或论文标题
+    year       INTEGER NOT NULL,
+    url        TEXT NOT NULL,       -- https，域名在 build.py 的 TIER_DOMAINS 里
+    method     TEXT NOT NULL,       -- 判定方式：一句话写清"拿什么和什么比"；只作说明时写"只作说明，不做数值对照"
+    study_type TEXT,                -- 级别 3 必填：系统综述 / 荟萃分析
+    is_dated   INTEGER NOT NULL DEFAULT 0,   -- 级别 3 且 构建年份 - year > 10
+    verified   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (note_id, sort_order)
+);
