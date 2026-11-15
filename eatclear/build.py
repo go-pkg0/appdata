@@ -42,7 +42,7 @@ SUBSTANCE_ROLES = ("additive", "fortifier", "additive|fortifier")
 CLAIM_NOTE_KINDS = ("comparative", "non_regulated")
 LABEL_PHRASE_KINDS = ("allergen_section", "allergen_may_contain", "audience",
                       "notice", "standard_code", "product_name")
-ALLERGEN_TERM_KINDS = ("statement", "ingredient")
+ALLERGEN_TERM_KINDS = ("statement", "ingredient", "exempt")
 
 NOTE_SUBJECT_TYPES = ("nutrient", "allergen", "function_class", "substance", "tip")
 
@@ -310,10 +310,10 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
             unverified["claim_rules"] = unverified.get("claim_rules", 0) + 1
         rule_keys.add((r["jurisdiction"], r["claim_key"]))
         cur.execute(
-            "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["nutrient"], r["comparator"],
              to_float(r, "threshold"), r["unit"], r["basis"], r["standard"], r["standard_version"],
-             r["source_ref"], check_date(r, "effective_from"), verified),
+             r["source_ref"], check_date(r, "effective_from"), verified, r.get("condition") or None),
         )
 
     # NRV

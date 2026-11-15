@@ -227,6 +227,32 @@ class TestSchema3(BuildTestCase):
                 self.assertNotEqual(self.run_build(), 0)
                 path.write_text(original, encoding="utf-8")
 
+    def test_claim_rule_condition_round_trips_and_may_be_empty(self):
+        self.append("claim_rules.csv",
+                    "CN,test_cond,测试条件,sugar,<=,1,g,per100g,GB 28050,2011,ref,,0,仅指乳品类。")
+        self.append("claim_rules.csv", "CN,test_none,测试无条件,sugar,<=,1,g,per100g,GB 28050,2011,ref,,0,")
+        self.append("claim_patterns.csv", "CN,测试条件声称,test_cond")
+        self.append("claim_patterns.csv", "CN,测试无条件声称,test_none")
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        rows = dict(conn.execute(
+            "SELECT claim_key, condition FROM claim_rules WHERE claim_key IN ('test_cond', 'test_none')").fetchall())
+        self.assertEqual(rows, {"test_cond": "仅指乳品类。", "test_none": None})
+
+    def test_claim_rules_header_has_condition(self):
+        header = (DATA_DIR / "source" / "claim_rules.csv").read_text(encoding="utf-8").splitlines()[0]
+        self.assertEqual(header.split(",")[-1], "condition")
+
+    def test_allergen_term_exempt_kind(self):
+        self.append("allergens.csv", "testkey,测试类,99")
+        self.append("allergen_terms.csv", "测试精炼油,testkey,exempt")
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        row = conn.execute("SELECT allergen_key, kind FROM allergen_terms WHERE term = '测试精炼油'").fetchone()
+        self.assertEqual(row, ("testkey", "exempt"))
+        self.append("allergen_terms.csv", "测试精炼油2,testkey,exempted")   # 非法 kind
+        self.assertNotEqual(self.run_build(), 0)
+
     def test_manifest_counts_new_tables(self):
         self.assertEqual(self.run_build(), 0)
         counts = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))["counts"]

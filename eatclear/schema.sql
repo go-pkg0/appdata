@@ -79,6 +79,9 @@ CREATE TABLE claim_rules (
     source_ref       TEXT NOT NULL,
     effective_from   TEXT,
     verified         INTEGER NOT NULL DEFAULT 0,
+    -- 标准里的限制性条件（如"仅指乳品类"），用一两句大白话写；NULL 表示没有。
+    -- 有条件的规则：数值不满足时 App 显示"存在差异"，满足时显示"无法对照"并附上这段文字，不显示"一致"
+    condition        TEXT,
     PRIMARY KEY (jurisdiction, claim_key, basis, standard_version)
 );
 
@@ -178,12 +181,14 @@ CREATE TABLE allergens (
 );
 
 -- 致敏物质的各种写法
--- statement：出现在"致敏物质提示"里的写法；ingredient：出现在配料表里的写法
+-- statement：出现在"致敏物质提示"里的写法；ingredient：出现在配料表里的写法；
+-- exempt：标准写明可以免于标示的配料（如精炼大豆油），allergen_key 是它本来会被匹配到的类别。
+-- App 按最长写法匹配，被 exempt 写法占住的文字不再算作致敏物质
 CREATE TABLE allergen_terms (
     term         TEXT NOT NULL,
     term_norm    TEXT NOT NULL,
     allergen_key TEXT NOT NULL REFERENCES allergens(key),
-    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient')),
+    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient', 'exempt')),
     PRIMARY KEY (term_norm, kind)
 );
 

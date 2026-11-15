@@ -30,6 +30,7 @@ class TestM1Content(unittest.TestCase):
         finally:
             build.SOURCE = orig_source
         if code != 0:
+            shutil.rmtree(cls.tmp)
             raise AssertionError("真实 source/ 构建失败")
         cls.manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
         cls.conn = sqlite3.connect(out / "eatclear-data.sqlite")
@@ -70,7 +71,8 @@ class TestM1Content(unittest.TestCase):
                 self.assertCountEqual(bases, ["per100g", "per100ml"])
         notes = {key: (kind, explain) for key, kind, explain in self.conn.execute(
             "SELECT claim_key, kind, explain FROM claim_notes WHERE jurisdiction = 'CN'").fetchall()}
-        for pattern in ("减糖", "减少糖", "少糖", "减盐", "减钠", "减脂", "减少脂肪"):
+        self.assertEqual(patterns.get(build.normalize("少糖")), "low_sugar")   # 表C.2："少"是"低"的同义语
+        for pattern in ("减糖", "减少糖", "减盐", "减钠", "减脂", "减少脂肪"):
             with self.subTest(pattern=pattern):
                 key = patterns.get(build.normalize(pattern))
                 self.assertIsNotNone(key, f"claim_patterns 里没有 {pattern}")
@@ -78,6 +80,48 @@ class TestM1Content(unittest.TestCase):
                 kind, explain = notes[key]
                 self.assertEqual(kind, "comparative")
                 self.assertTrue(explain.strip())
+
+    def test_comparative_claims_cover_table_c3(self):
+        keys = set(self.column("SELECT claim_key FROM claim_notes WHERE kind = 'comparative'"))
+        for key in ("reduced_energy", "increased_protein", "reduced_protein", "reduced_fat", "reduced_cholesterol",
+                    "increased_carbohydrate", "reduced_carbohydrate", "reduced_sugar", "increased_fiber",
+                    "reduced_fiber", "reduced_sodium", "increased_mineral", "reduced_mineral",
+                    "increased_vitamin", "reduced_vitamin"):
+            with self.subTest(key=key):
+                self.assertIn(key, keys)
+
+    def test_restrictive_conditions_present(self):
+        for key in ("energy_free", "low_energy", "saturated_fat_free", "low_saturated_fat",
+                    "cholesterol_free", "low_cholesterol", "lactose_free", "low_lactose"):
+            with self.subTest(key=key):
+                conditions = self.column("SELECT condition FROM claim_rules WHERE claim_key = ?", key)
+                self.assertTrue(conditions)
+                for condition in conditions:
+                    self.assertTrue((condition or "").strip())
+
+    def test_all_vitamins_and_minerals_with_claims(self):
+        rule_keys = set(self.column("SELECT claim_key FROM claim_rules"))
+        nrv_keys = set(self.column("SELECT nutrient FROM nrv"))
+        for nutrient in ("vitamin_b6", "vitamin_b12", "vitamin_k", "pantothenic_acid", "biotin",
+                         "iodine", "selenium", "copper", "fluoride", "manganese"):
+            with self.subTest(nutrient=nutrient):
+                self.assertIn(nutrient, nrv_keys)
+                self.assertIn(f"source_of_{nutrient}", rule_keys)
+                self.assertIn(f"high_{nutrient}", rule_keys)
+
+    def test_patterns_that_match_ordinary_text_removed(self):
+        patterns = set(self.column("SELECT pattern_norm FROM claim_patterns"))
+        for pattern in ("高铁", "富含磷", "含有磷", "含有铁", "高锰", "富硒"):
+            with self.subTest(pattern=pattern):
+                self.assertNotIn(build.normalize(pattern), patterns)
+
+    def test_exempt_allergen_terms(self):
+        exempt = dict(self.conn.execute(
+            "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'exempt'").fetchall())
+        for term, key in (("大豆油", "soy"), ("花生油", "peanut"), ("大豆磷脂", "soy"), ("小麦淀粉", "gluten"),
+                          ("乳糖醇", "milk"), ("鱿鱼", "fish")):
+            with self.subTest(term=term):
+                self.assertEqual(exempt.get(build.normalize(term)), key)
 
     def test_every_gb28050_content_claim_has_patterns(self):
         missing = self.column(

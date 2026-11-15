@@ -54,11 +54,13 @@ App 按字面查找，长的写法优先，所以不用为了包含关系专门�
 | `settings.csv` | `key,value,note` | |
 | `label_phrases.csv` | `kind,phrase` | `kind`：`allergen_section`、`allergen_may_contain`、`audience`、`notice`、`standard_code`、`product_name` |
 | `allergens.csv` | `key,name_zh,sort_order` | 8 类，按 GB 7718 的顺序 |
-| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）或 `ingredient`（配料表里的原料） |
+| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）、`ingredient`（配料表里的原料）或 `exempt`（标准写明可以免于致敏物质标示的配料，如 GB 7718-2025 附录D.4 的精炼大豆油；`allergen_key` 写它本来会被匹配到的类别）。App 按最长写法匹配，被 `exempt` 写法占住的文字不再算作致敏物质，所以"大豆油"不会被当成"大豆" |
 | `notes.csv` | `id,subject_type,subject_key,title,body,verified` | `subject_type`：`nutrient`（`subject_key` 是营养素 key）、`allergen`（致敏物质 key）、`function_class`（功能类别名）、`substance`（物质 id）、`tip`（小知识，`subject_key` 写自己的 id）。正文 2～4 句 |
 | `note_sources.csv` | `note_id,tier,org,title,year,url,method,study_type,verified` | 见下一节。同一条说明的依据按文件里的先后排序 |
 
-`claim_rules.csv` 只能表达"某个营养素 每100克/每100毫升 ≤ 或 ≥ 某个数"。GB 28050 表C.1 里还有"每420千焦""脂肪供能比"等限制性条件，这类条件目前没有录入，`source_ref` 写到表号，方便核对时补充。
+`claim_rules.csv` 的数值部分只能表达"某个营养素 每100克/每100毫升 ≤ 或 ≥ 某个数"。最后一列 `condition` 写标准里的限制性条件（如"仅指乳品类"、"指饱和脂肪和反式脂肪的总和"、"脂肪提供的能量不超过总能量的50%"），用一两句大白话写清标准还要求什么；没有条件时留空。有条件的规则，App 在数值不满足时显示"存在差异"，满足时显示"无法对照"并附上这段文字，不会显示"一致"。
+
+"每420千焦"、膳食纤维"可溶性或不可溶性任一项"这类**可替代**的达标方式不写进 `condition`，目前也没有录入。因此按每100克/每100毫升不满足时，换一种算法仍可能达标，核对时要留意。
 
 ## 说明和依据
 
