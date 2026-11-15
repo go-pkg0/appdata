@@ -1,4 +1,4 @@
-id,ins,cas,e_number,name_zh,name_en,function_class,note
+id,ins,cas,e_number,name_zh,name_en,function_class,note,roles
 INS200,200,110-44-1,E200,山梨酸,Sorbic acid,防腐剂,
 INS202,202,24634-61-5,E202,山梨酸钾,Potassium sorbate,防腐剂,
 INS210,210,65-85-0,E210,苯甲酸,Benzoic acid,防腐剂,

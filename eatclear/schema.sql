@@ -21,7 +21,10 @@ CREATE TABLE substances (
     name_zh        TEXT NOT NULL,
     name_en        TEXT,
     function_class TEXT NOT NULL,   -- 功能类别，如 防腐剂、甜味剂、着色剂
-    note           TEXT
+    note           TEXT,
+    -- 用途：additive 添加剂（GB 2760）、fortifier 营养强化剂（GB 14880），两者都是写 additive|fortifier
+    roles          TEXT NOT NULL DEFAULT 'additive'
+        CHECK (roles IN ('additive', 'fortifier', 'additive|fortifier'))
 );
 
 -- 别名：配料表上可能出现的各种写法，用于匹配 OCR 结果
@@ -77,6 +80,19 @@ CREATE TABLE claim_rules (
     effective_from   TEXT,
     verified         INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (jurisdiction, claim_key, basis, standard_version)
+);
+
+-- 识别得出、但不能用营养成分表数值对照的说法，附上给用户看的原因
+-- comparative：比较类声称（如"减盐"），要和同类产品比，包装上的数字不够；
+-- non_regulated：标准里没有对应数值定义的说法（如"0蔗糖"）
+-- 同一个 claim_key 只能在 claim_rules 或 claim_notes 其中之一出现（由构建脚本检查）
+CREATE TABLE claim_notes (
+    jurisdiction  TEXT NOT NULL,
+    claim_key     TEXT NOT NULL,
+    claim_name_zh TEXT NOT NULL,
+    kind          TEXT NOT NULL CHECK (kind IN ('comparative', 'non_regulated')),
+    explain       TEXT NOT NULL,          -- 为什么无法对照，给用户看的一两句话
+    PRIMARY KEY (jurisdiction, claim_key)
 );
 
 -- 包装上的说法和规则的对应关系，如 "0糖" "不含糖" -> sugar_free
@@ -135,4 +151,38 @@ CREATE TABLE law_links (
     title        TEXT NOT NULL,
     url          TEXT NOT NULL,      -- https，域名在 build.py 的 LINK_DOMAINS 里
     PRIMARY KEY (article_id, sort_order)
+);
+
+-- 可调的数值设置，如一块方糖按多少克换算
+CREATE TABLE settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    note  TEXT
+);
+
+-- 标签上固定的提示用语，用于识别致敏物质提示段、适用人群、注意事项、标准号、商品名等
+-- phrase_norm 是归一化后的写法，由构建脚本生成
+CREATE TABLE label_phrases (
+    kind        TEXT NOT NULL CHECK (kind IN ('allergen_section', 'allergen_may_contain',
+                                              'audience', 'notice', 'standard_code', 'product_name')),
+    phrase      TEXT NOT NULL,
+    phrase_norm TEXT NOT NULL,
+    PRIMARY KEY (kind, phrase_norm)
+);
+
+-- 致敏物质分类（如 牛奶、鸡蛋、花生）
+CREATE TABLE allergens (
+    key        TEXT PRIMARY KEY,
+    name_zh    TEXT NOT NULL,
+    sort_order INTEGER NOT NULL
+);
+
+-- 致敏物质的各种写法
+-- statement：出现在"致敏物质提示"里的写法；ingredient：出现在配料表里的写法
+CREATE TABLE allergen_terms (
+    term         TEXT NOT NULL,
+    term_norm    TEXT NOT NULL,
+    allergen_key TEXT NOT NULL REFERENCES allergens(key),
+    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient')),
+    PRIMARY KEY (term_norm, kind)
 );

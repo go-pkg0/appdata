@@ -29,16 +29,19 @@ from urllib.parse import urlparse
 # 数据库结构版本。修改 schema.sql 时必须加 1，
 # 并同时修改 App 里 DataRepository.swift 的 supportedSchemaVersion。
 # App 会拒绝加载自己不认识的版本。
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # "懂法"文章的原文链接只能指向这些域名（含子域名），并且必须是 https。
 # gov.cn 覆盖国家法律法规数据库 flk.npc.gov.cn、中国人大网、中国政府网、市场监管总局、国家卫健委；
 # cfsa.net.cn 是食品安全国家标准数据检索平台；12315.cn 是全国 12315 平台。
 LINK_DOMAINS = ("gov.cn", "cfsa.net.cn", "12315.cn")
 
-# 这些说法会被识别出来，但标准里没有对应的数字定义。
-# App 会显示"这不是标准定义的声称"，而不是去做数值对照。
-NON_REGULATED_CLAIMS = {"sucrose_free"}
+# substances.roles 允许的取值：添加剂、营养强化剂，或两者都是
+SUBSTANCE_ROLES = ("additive", "fortifier", "additive|fortifier")
+CLAIM_NOTE_KINDS = ("comparative", "non_regulated")
+LABEL_PHRASE_KINDS = ("allergen_section", "allergen_may_contain", "audience",
+                      "notice", "standard_code", "product_name")
+ALLERGEN_TERM_KINDS = ("statement", "ingredient")
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source"
@@ -192,10 +195,13 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if r["id"] in substance_ids:
             raise BuildError(f"{r['__line__']}: 重复的物质 id {r['id']}")
         substance_ids.add(r["id"])
+        roles = r.get("roles") or "additive"
+        if roles not in SUBSTANCE_ROLES:
+            raise BuildError(f"{r['__line__']}: roles 只能是 {' / '.join(SUBSTANCE_ROLES)}，现在是 {roles!r}")
         cur.execute(
-            "INSERT INTO substances VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO substances VALUES (?,?,?,?,?,?,?,?,?)",
             (r["id"], r.get("ins") or None, r.get("cas") or None, r.get("e_number") or None,
-             r["name_zh"], r.get("name_en") or None, r["function_class"], r.get("note") or None),
+             r["name_zh"], r.get("name_en") or None, r["function_class"], r.get("note") or None, roles),
         )
 
     # aliases（每个物质自动加上中文名，避免漏写）
@@ -292,13 +298,28 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if (jur, nutrient) not in nrv_keys:
             raise BuildError(f"claim_rules.csv: {jur} {nutrient} 使用 %NRV，但 nrv.csv 里没有它的参考值")
 
+    # claim notes：识别得出但不能数值对照的说法。同一个 claim_key 不能同时有规则和说明
+    note_keys: set[tuple[str, str]] = set()
+    for r in read_csv("claim_notes.csv"):
+        require(r, "jurisdiction", "claim_key", "claim_name_zh", "kind", "explain")
+        if r["kind"] not in CLAIM_NOTE_KINDS:
+            raise BuildError(f"{r['__line__']}: kind 只能是 {' / '.join(CLAIM_NOTE_KINDS)}，现在是 {r['kind']!r}")
+        key = (r["jurisdiction"], r["claim_key"])
+        if key in rule_keys:
+            raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 已经在 claim_rules.csv 里有规则，不能再写说明")
+        if key in note_keys:
+            raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 重复")
+        note_keys.add(key)
+        cur.execute("INSERT INTO claim_notes VALUES (?,?,?,?,?)",
+                    (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["kind"], r["explain"]))
+
     # claim patterns
     pattern_owner: dict[tuple[str, str], str] = {}
     for r in read_csv("claim_patterns.csv"):
         require(r, "jurisdiction", "pattern", "claim_key")
         key = (r["jurisdiction"], r["claim_key"])
-        if key not in rule_keys and r["claim_key"] not in NON_REGULATED_CLAIMS:
-            raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 在 claim_rules.csv 里没有规则")
+        if key not in rule_keys and key not in note_keys:
+            raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 在 claim_rules.csv 和 claim_notes.csv 里都没有")
         norm = normalize(r["pattern"])
         pkey = (r["jurisdiction"], norm)
         if pkey in pattern_owner:
@@ -310,6 +331,55 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
     for r in read_csv("nutrient_names.csv"):
         require(r, "name", "nutrient")
         cur.execute("INSERT INTO nutrient_names VALUES (?,?,?)", (r["name"], normalize(r["name"]), r["nutrient"]))
+
+    # settings
+    setting_keys: set[str] = set()
+    for r in read_csv("settings.csv"):
+        require(r, "key", "value")
+        if r["key"] in setting_keys:
+            raise BuildError(f"{r['__line__']}: 重复的设置 {r['key']}")
+        setting_keys.add(r["key"])
+        cur.execute("INSERT INTO settings VALUES (?,?,?)", (r["key"], r["value"], r.get("note") or None))
+
+    # label phrases
+    phrase_keys: set[tuple[str, str]] = set()
+    for r in read_csv("label_phrases.csv"):
+        require(r, "kind", "phrase")
+        if r["kind"] not in LABEL_PHRASE_KINDS:
+            raise BuildError(f"{r['__line__']}: kind 只能是 {' / '.join(LABEL_PHRASE_KINDS)}，现在是 {r['kind']!r}")
+        norm = normalize(r["phrase"])
+        if not norm:
+            raise BuildError(f"{r['__line__']}: phrase 归一化后为空")
+        if (r["kind"], norm) in phrase_keys:
+            raise BuildError(f"{r['__line__']}: {r['kind']} 里的 {r['phrase']!r} 重复")
+        phrase_keys.add((r["kind"], norm))
+        cur.execute("INSERT INTO label_phrases VALUES (?,?,?)", (r["kind"], r["phrase"], norm))
+
+    # allergens
+    allergen_keys: set[str] = set()
+    for r in read_csv("allergens.csv"):
+        require(r, "key", "name_zh", "sort_order")
+        if r["key"] in allergen_keys:
+            raise BuildError(f"{r['__line__']}: 重复的致敏物质 key {r['key']}")
+        allergen_keys.add(r["key"])
+        cur.execute("INSERT INTO allergens VALUES (?,?,?)",
+                    (r["key"], r["name_zh"], int(to_float(r, "sort_order"))))
+
+    # allergen terms
+    term_keys: set[tuple[str, str]] = set()
+    for r in read_csv("allergen_terms.csv"):
+        require(r, "term", "allergen_key", "kind")
+        if r["allergen_key"] not in allergen_keys:
+            raise BuildError(f"{r['__line__']}: 未知的致敏物质 key {r['allergen_key']}")
+        if r["kind"] not in ALLERGEN_TERM_KINDS:
+            raise BuildError(f"{r['__line__']}: kind 只能是 {' / '.join(ALLERGEN_TERM_KINDS)}，现在是 {r['kind']!r}")
+        norm = normalize(r["term"])
+        if not norm:
+            raise BuildError(f"{r['__line__']}: term 归一化后为空")
+        if (norm, r["kind"]) in term_keys:
+            raise BuildError(f"{r['__line__']}: {r['kind']} 里的 {r['term']!r} 重复")
+        term_keys.add((norm, r["kind"]))
+        cur.execute("INSERT INTO allergen_terms VALUES (?,?,?,?)", (r["term"], norm, r["allergen_key"], r["kind"]))
 
     # law categories
     law_dir = SOURCE / "law"
@@ -363,7 +433,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
     counts = {
         table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         for table in ("substances", "aliases", "food_categories", "limits", "claim_rules",
-                      "claim_patterns", "nutrient_names", "nrv",
+                      "claim_notes", "claim_patterns", "nutrient_names", "nrv",
+                      "settings", "label_phrases", "allergens", "allergen_terms",
                       "law_categories", "law_articles", "law_links")
     }
     conn.execute("VACUUM")

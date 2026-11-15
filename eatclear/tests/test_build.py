@@ -169,6 +169,52 @@ class TestBuild(BuildTestCase):
         self.assertEqual(self.run_build(), 1)
 
 
+class TestSchema3(BuildTestCase):
+    def test_schema_version_is_3(self):
+        self.assertEqual(build.SCHEMA_VERSION, 3)
+
+    def test_roles_default_and_validation(self):
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        self.assertEqual(conn.execute("SELECT roles FROM substances WHERE id='INS202'").fetchone()[0], "additive")
+        self.append("substances.csv", "CASX1,,,,测试物质,,营养强化剂,,nutrient")   # 非法用途
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_sucrose_free_moved_to_claim_notes(self):
+        self.assertFalse(hasattr(build, "NON_REGULATED_CLAIMS"))
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        row = conn.execute("SELECT kind FROM claim_notes WHERE claim_key='sucrose_free'").fetchone()
+        self.assertEqual(row[0], "non_regulated")
+
+    def test_pattern_needs_rule_or_note(self):
+        self.append("claim_patterns.csv", "CN,减盐,reduced_salt_unknown")
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_claim_key_cannot_be_both_rule_and_note(self):
+        self.append("claim_notes.csv", "CN,low_sugar,低糖,comparative,测试")
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_allergen_term_needs_known_allergen(self):
+        self.append("allergen_terms.csv", "外星豆,unknown_key,statement")
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_label_phrase_kind_checked(self):
+        self.append("label_phrases.csv", "bad_kind,测试")
+        self.assertNotEqual(self.run_build(), 0)
+
+    def test_setting_sugar_cube(self):
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        self.assertEqual(conn.execute("SELECT value FROM settings WHERE key='sugar_cube_grams'").fetchone()[0], "4.5")
+
+    def test_manifest_counts_new_tables(self):
+        self.assertEqual(self.run_build(), 0)
+        counts = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))["counts"]
+        for table in ("claim_notes", "settings", "label_phrases", "allergens", "allergen_terms"):
+            self.assertIn(table, counts)
+
+
 class TestLinkDomain(unittest.TestCase):
     def test_allowed(self):
         for url in ("https://flk.npc.gov.cn/detail", "https://www.gov.cn/x.htm",
