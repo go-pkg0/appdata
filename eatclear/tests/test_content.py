@@ -71,7 +71,12 @@ class TestM1Content(unittest.TestCase):
                 self.assertCountEqual(bases, ["per100g", "per100ml"])
         notes = {key: (kind, explain) for key, kind, explain in self.conn.execute(
             "SELECT claim_key, kind, explain FROM claim_notes WHERE jurisdiction = 'CN'").fetchall()}
-        self.assertEqual(patterns.get(build.normalize("少糖")), "low_sugar")   # 表C.2："少"是"低"的同义语
+        # 2011 版里"少"既是"低"（表C.2）也是"减少"（表C.4）的同义语，所以"少糖"单独成一条 ambiguous 说明
+        ambiguous = set(self.column("SELECT claim_key FROM claim_notes WHERE kind = 'ambiguous'"))
+        for pattern in ("少糖", "少盐", "少钠", "少脂", "少脂肪"):
+            with self.subTest(ambiguous=pattern):
+                self.assertIn(patterns.get(build.normalize(pattern)), ambiguous)
+        self.assertEqual(patterns.get(build.normalize("少油")), "low_fat")   # 表C.2 注a："少油"仅用于低脂肪
         for pattern in ("减糖", "减少糖", "减盐", "减钠", "减脂", "减少脂肪"):
             with self.subTest(pattern=pattern):
                 key = patterns.get(build.normalize(pattern))
@@ -111,17 +116,46 @@ class TestM1Content(unittest.TestCase):
 
     def test_patterns_that_match_ordinary_text_removed(self):
         patterns = set(self.column("SELECT pattern_norm FROM claim_patterns"))
-        for pattern in ("高铁", "富含磷", "含有磷", "含有铁", "高锰", "富硒"):
+        for pattern in ("高铁", "富含磷", "含有磷", "含有铁", "高锰", "富硒", "高钾", "高磷", "增加钙", "增加铁", "增加锌"):
             with self.subTest(pattern=pattern):
                 self.assertNotIn(build.normalize(pattern), patterns)
 
     def test_exempt_allergen_terms(self):
         exempt = dict(self.conn.execute(
             "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'exempt'").fetchall())
-        for term, key in (("大豆油", "soy"), ("花生油", "peanut"), ("大豆磷脂", "soy"), ("小麦淀粉", "gluten"),
-                          ("乳糖醇", "milk"), ("鱿鱼", "fish")):
+        for term, key in (("精炼大豆油", "soy"), ("精炼花生油", "peanut"), ("大豆磷脂", "soy"),
+                          ("大豆卵磷脂", "soy"), ("小麦淀粉", "gluten"), ("精炼鱼油", "fish"), ("乳糖醇", "milk")):
             with self.subTest(term=term):
                 self.assertEqual(exempt.get(build.normalize(term)), key)
+        not_allergen = dict(self.conn.execute(
+            "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'not_allergen'").fetchall())
+        for term, key in (("鱿鱼", "fish"), ("鱼腥草", "fish"), ("虾青素", "crustacean"), ("植物奶油", "milk"),
+                          ("人造奶油", "milk"), ("花生四烯酸", "peanut")):
+            with self.subTest(not_allergen=term):
+                self.assertEqual(not_allergen.get(build.normalize(term)), key)
+                self.assertNotIn(build.normalize(term), exempt)
+
+    def test_more_ingredient_terms(self):
+        terms = dict(self.conn.execute(
+            "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'ingredient'").fetchall())
+        for term, key in (("蛋黄", "egg"), ("酪蛋白", "milk"), ("酪蛋白酸钠", "milk"), ("牛乳", "milk"),
+                          ("鲜牛乳", "milk"), ("巴旦木", "nut"), ("夏威夷果", "nut"), ("碧根果", "nut"),
+                          ("松子", "nut"), ("黄豆", "soy")):
+            with self.subTest(term=term):
+                self.assertEqual(terms.get(build.normalize(term)), key)
+
+    def test_per420kj_alternatives(self):
+        def values(key):
+            return self.column("SELECT per420kj_threshold FROM claim_rules WHERE claim_key = ? "
+                               "AND standard_version = ?", key, CURRENT_28050)
+        for key, expected in (("source_of_fiber", 1.5), ("high_fiber", 3), ("source_of_protein", 5),
+                              ("high_protein", 10), ("source_of_calcium", 5), ("high_calcium", 10),
+                              ("source_of_vitamin_c", 5), ("high_vitamin_c", 10)):
+            with self.subTest(key=key):
+                self.assertEqual(sorted(values(key)), [expected, expected])
+        for key in ("low_sugar", "sodium_free", "low_fat", "energy_free"):
+            with self.subTest(without=key):
+                self.assertEqual(set(values(key)), {None})
 
     def test_every_gb28050_content_claim_has_patterns(self):
         missing = self.column(

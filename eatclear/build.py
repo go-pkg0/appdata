@@ -39,10 +39,10 @@ LINK_DOMAINS = ("gov.cn", "cfsa.net.cn", "12315.cn")
 
 # substances.roles 允许的取值：添加剂、营养强化剂，或两者都是
 SUBSTANCE_ROLES = ("additive", "fortifier", "additive|fortifier")
-CLAIM_NOTE_KINDS = ("comparative", "non_regulated")
+CLAIM_NOTE_KINDS = ("comparative", "non_regulated", "ambiguous")
 LABEL_PHRASE_KINDS = ("allergen_section", "allergen_may_contain", "audience",
                       "notice", "standard_code", "product_name")
-ALLERGEN_TERM_KINDS = ("statement", "ingredient", "exempt")
+ALLERGEN_TERM_KINDS = ("statement", "ingredient", "exempt", "not_allergen")
 
 NOTE_SUBJECT_TYPES = ("nutrient", "allergen", "function_class", "substance", "tip")
 
@@ -309,11 +309,14 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if not verified:
             unverified["claim_rules"] = unverified.get("claim_rules", 0) + 1
         rule_keys.add((r["jurisdiction"], r["claim_key"]))
+        for word in banned_words_in(r.get("condition", "")):
+            warnings.append(f"{r['__line__']}: 声称 {r['claim_key']} 的条件里出现“{word}”，请改写或放进引号")
         cur.execute(
-            "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["nutrient"], r["comparator"],
              to_float(r, "threshold"), r["unit"], r["basis"], r["standard"], r["standard_version"],
-             r["source_ref"], check_date(r, "effective_from"), verified, r.get("condition") or None),
+             r["source_ref"], check_date(r, "effective_from"), verified, r.get("condition") or None,
+             to_float(r, "per420kj_threshold", allow_empty=True)),
         )
 
     # NRV
@@ -349,6 +352,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if key in note_keys:
             raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 重复")
         note_keys.add(key)
+        for word in banned_words_in(r["explain"]):
+            warnings.append(f"{r['__line__']}: 声称说明 {r['claim_key']} 里出现“{word}”，请改写或放进引号")
         cur.execute("INSERT INTO claim_notes VALUES (?,?,?,?,?)",
                     (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["kind"], r["explain"]))
 

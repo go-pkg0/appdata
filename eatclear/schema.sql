@@ -82,18 +82,22 @@ CREATE TABLE claim_rules (
     -- 标准里的限制性条件（如"仅指乳品类"），用一两句大白话写；NULL 表示没有。
     -- 有条件的规则：数值不满足时 App 显示"存在差异"，满足时显示"无法对照"并附上这段文字，不显示"一致"
     condition        TEXT,
+    -- 标准给出的"每420千焦"替代要求，单位和 threshold 相同；NULL 表示没有。
+    -- 按 basis 不满足时，App 用能量一行换算成每420千焦再比一次
+    per420kj_threshold REAL,
     PRIMARY KEY (jurisdiction, claim_key, basis, standard_version)
 );
 
 -- 识别得出、但不能用营养成分表数值对照的说法，附上给用户看的原因
 -- comparative：比较类声称（如"减盐"），要和同类产品比，包装上的数字不够；
--- non_regulated：标准里没有对应数值定义的说法（如"0蔗糖"）
+-- non_regulated：标准里没有对应数值定义的说法（如"0蔗糖"）；
+-- ambiguous：同一个写法在现行标准里有两种意思（如"少糖"可以是"低糖"也可以是"减少糖"），包装上看不出是哪一种
 -- 同一个 claim_key 只能在 claim_rules 或 claim_notes 其中之一出现（由构建脚本检查）
 CREATE TABLE claim_notes (
     jurisdiction  TEXT NOT NULL,
     claim_key     TEXT NOT NULL,
     claim_name_zh TEXT NOT NULL,
-    kind          TEXT NOT NULL CHECK (kind IN ('comparative', 'non_regulated')),
+    kind          TEXT NOT NULL CHECK (kind IN ('comparative', 'non_regulated', 'ambiguous')),
     explain       TEXT NOT NULL,          -- 为什么无法对照，给用户看的一两句话
     PRIMARY KEY (jurisdiction, claim_key)
 );
@@ -182,13 +186,14 @@ CREATE TABLE allergens (
 
 -- 致敏物质的各种写法
 -- statement：出现在"致敏物质提示"里的写法；ingredient：出现在配料表里的写法；
--- exempt：标准写明可以免于标示的配料（如精炼大豆油），allergen_key 是它本来会被匹配到的类别。
--- App 按最长写法匹配，被 exempt 写法占住的文字不再算作致敏物质
+-- exempt：标准（GB 7718-2025 附录D.4）写明可以免于致敏物质标示的配料（如精炼大豆油）；
+-- not_allergen：字面上含有某类致敏物质的写法，但并不是这类物质（如"鱿鱼"不是鱼类，"花生四烯酸"不是花生）。
+-- 这两种的 allergen_key 都是它本来会被匹配到的类别。App 按最长写法匹配，被它们占住的文字不再算作致敏物质
 CREATE TABLE allergen_terms (
     term         TEXT NOT NULL,
     term_norm    TEXT NOT NULL,
     allergen_key TEXT NOT NULL REFERENCES allergens(key),
-    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient', 'exempt')),
+    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient', 'exempt', 'not_allergen')),
     PRIMARY KEY (term_norm, kind)
 );
 

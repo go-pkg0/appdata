@@ -102,7 +102,6 @@ CN,含有叶酸,source_of_folate
 CN,含叶酸,source_of_folate
 CN,钙来源,source_of_calcium
 CN,含有钙,source_of_calcium
-CN,高磷,high_phosphorus
 CN,磷来源,source_of_phosphorus
 CN,富含钾,high_potassium
 CN,钾来源,source_of_potassium
@@ -134,11 +133,11 @@ CN,减少盐,reduced_sodium
 CN,减盐,reduced_sodium
 CN,增加维生素,increased_vitamin
 CN,减少饱和脂肪,reduced_saturated_fat
-CN,少糖,low_sugar
-CN,少钠,low_sodium
-CN,少盐,low_sodium
-CN,少脂肪,low_fat
-CN,少脂,low_fat
+CN,少糖,ambiguous_sugar
+CN,少钠,ambiguous_sodium
+CN,少盐,ambiguous_sodium
+CN,少脂肪,ambiguous_fat
+CN,少脂,ambiguous_fat
 CN,极少钠,very_low_sodium
 CN,极低盐,very_low_sodium
 CN,极少盐,very_low_sodium
@@ -208,8 +207,5 @@ CN,高铜,high_copper
 CN,增加碳水化合物,increased_carbohydrate
 CN,减少膳食纤维,reduced_fiber
 CN,增加矿物质,increased_mineral
-CN,增加钙,increased_mineral
-CN,增加铁,increased_mineral
-CN,增加锌,increased_mineral
 CN,减少矿物质,reduced_mineral
 CN,减少维生素,reduced_vitamin

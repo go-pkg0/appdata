@@ -50,17 +50,19 @@ App 按字面查找，长的写法优先，所以不用为了包含关系专门�
 | 文件 | 列 | 说明 |
 |---|---|---|
 | `substances.csv` | `id,ins,cas,e_number,name_zh,name_en,function_class,note,roles` | `roles`：`additive`（GB 2760 添加剂，空着时默认）、`fortifier`（GB 14880 营养强化剂）或 `additive\|fortifier`（两者都是）。只是营养强化剂的，`function_class` 写"营养强化剂"；两者都是的，`function_class` 写它在 GB 2760 里列出的第一个功能 |
-| `claim_notes.csv` | `jurisdiction,claim_key,claim_name_zh,kind,explain` | `kind`：`comparative`（比较声称，如"减糖"）或 `non_regulated`（标准里没有数值定义，如"0蔗糖"）。同一个 `claim_key` 只能出现在 `claim_rules.csv` 或这里其中之一 |
+| `claim_notes.csv` | `jurisdiction,claim_key,claim_name_zh,kind,explain` | `kind`：`comparative`（比较声称，如"减糖"）、`non_regulated`（标准里没有数值定义，如"0蔗糖"）或 `ambiguous`（同一个写法在现行标准里有两种意思：GB 28050-2011 表C.2 把"少"列为"低"的同义语，表C.4 又把"少"列为"减少"的同义语，所以"少糖""少盐"包装上看不出是哪一种）。"少油"例外：表C.2 注a 写明"少油"仅用于低脂肪的声称，所以它直接对应 `low_fat`。同一个 `claim_key` 只能出现在 `claim_rules.csv` 或这里其中之一 |
 | `settings.csv` | `key,value,note` | |
 | `label_phrases.csv` | `kind,phrase` | `kind`：`allergen_section`、`allergen_may_contain`、`audience`、`notice`、`standard_code`、`product_name` |
 | `allergens.csv` | `key,name_zh,sort_order` | 8 类，按 GB 7718 的顺序 |
-| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）、`ingredient`（配料表里的原料）或 `exempt`（标准写明可以免于致敏物质标示的配料，如 GB 7718-2025 附录D.4 的精炼大豆油；`allergen_key` 写它本来会被匹配到的类别）。App 按最长写法匹配，被 `exempt` 写法占住的文字不再算作致敏物质，所以"大豆油"不会被当成"大豆" |
+| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）、`ingredient`（配料表里的原料）、`exempt` 或 `not_allergen`，后两种的 `allergen_key` 写它本来会被匹配到的类别。`exempt` 只收 GB 7718-2025 附录D.4 写明可以免于致敏物质标示的配料，按原文写法录（如"精炼大豆油""大豆磷脂"）；不带"精炼"的"大豆油""花生油""鱼油"不算，因为原文只豁免精炼过的。`not_allergen` 收字面上含有某类致敏物质、但并不是这类物质的写法（如"鱿鱼"不是鱼类，"花生四烯酸"不是花生，"植物奶油"不是乳）。App 按最长写法匹配，被这两种写法占住的文字不再算作致敏物质 |
 | `notes.csv` | `id,subject_type,subject_key,title,body,verified` | `subject_type`：`nutrient`（`subject_key` 是营养素 key）、`allergen`（致敏物质 key）、`function_class`（功能类别名）、`substance`（物质 id）、`tip`（小知识，`subject_key` 写自己的 id）。正文 2～4 句 |
 | `note_sources.csv` | `note_id,tier,org,title,year,url,method,study_type,verified` | 见下一节。同一条说明的依据按文件里的先后排序 |
 
 `claim_rules.csv` 的数值部分只能表达"某个营养素 每100克/每100毫升 ≤ 或 ≥ 某个数"。最后一列 `condition` 写标准里的限制性条件（如"仅指乳品类"、"指饱和脂肪和反式脂肪的总和"、"脂肪提供的能量不超过总能量的50%"），用一两句大白话写清标准还要求什么；没有条件时留空。有条件的规则，App 在数值不满足时显示"存在差异"，满足时显示"无法对照"并附上这段文字，不会显示"一致"。
 
-"每420千焦"、膳食纤维"可溶性或不可溶性任一项"这类**可替代**的达标方式不写进 `condition`，目前也没有录入。因此按每100克/每100毫升不满足时，换一种算法仍可能达标，核对时要留意。
+表C.1 对蛋白质、膳食纤维、维生素、矿物质的"来源"和"高"声称，还给了"每420千焦"的替代要求。这个数写在 `per420kj_threshold` 列，单位和 `threshold` 相同（如膳食纤维写克，维生素写 %NRV），每100克和每100毫升两行都填（国家卫健委《GB 28050-2025 问答》第四十二条把三种要求并列为"或"）；没有替代要求的留空。按 `basis` 不满足时，App 用营养成分表的能量一行换算成每420千焦再比一次。
+
+膳食纤维的限制性条件写的是"膳食纤维总量符合含量要求；或者可溶性、不可溶性膳食纤维或单体成分任一项符合"。这几项都包含在总量里，任一项达标时总量也达标，所以只按总量录入，不写进 `condition`。
 
 ## 说明和依据
 
@@ -80,7 +82,7 @@ App 按字面查找，长的写法优先，所以不用为了包含关系专门�
 
 ## 禁用词警告
 
-App 自己的文案不用"安全、不安全、风险、有害、合格、不合格、超标"这些词。构建时检查 `notes.csv` 的标题和正文：这些词出现在引号（“” "" 「」）和书名号（《》）外面时，构建不失败，但会在输出和 `manifest.json` 的 `warnings` 里列出。
+App 自己的文案不用"安全、不安全、风险、有害、合格、不合格、超标"这些词。构建时检查 `notes.csv` 的标题和正文、`claim_rules.csv` 的 `condition`、`claim_notes.csv` 的 `explain`：这些词出现在引号（“” "" 「」）和书名号（《》）外面时，构建不失败，但会在输出和 `manifest.json` 的 `warnings` 里列出。
 
 处理方法：
 
