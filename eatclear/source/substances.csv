@@ -5,7 +5,7 @@ INS210,210,65-85-0,E210,苯甲酸,Benzoic acid,防腐剂,
 INS211,211,532-32-1,E211,苯甲酸钠,Sodium benzoate,防腐剂,
 INS220,220,7446-09-5,E220,二氧化硫,Sulphur dioxide,漂白剂,
 INS250,250,7632-00-0,E250,亚硝酸钠,Sodium nitrite,护色剂,
-INS300,300,50-81-7,E300,抗坏血酸,Ascorbic acid,抗氧化剂,
+INS300,300,50-81-7,E300,抗坏血酸,Ascorbic acid,抗氧化剂,,additive|fortifier
 INS319,319,1948-33-0,E319,特丁基对苯二酚,Tertiary butylhydroquinone (TBHQ),抗氧化剂,
 INS330,330,77-92-9,E330,柠檬酸,Citric acid,酸度调节剂,
 INS322,322,8002-43-5,E322,磷脂,Lecithins,乳化剂,
@@ -22,3 +22,56 @@ INS960,960,,E960,甜菊糖苷,Steviol glycosides,甜味剂,
 INS967,967,87-99-0,E967,木糖醇,Xylitol,甜味剂,
 INS968,968,149-32-6,E968,赤藓糖醇,Erythritol,甜味剂,
 INS621,621,142-47-2,E621,谷氨酸钠,Monosodium glutamate,增味剂,
+INS301,301,,,抗坏血酸钠,Sodium ascorbate,抗氧化剂,,additive|fortifier
+INS302,302,,,抗坏血酸钙,Calcium ascorbate,抗氧化剂,,additive|fortifier
+INS304,304,,,抗坏血酸棕榈酸酯,Ascorbyl palmitate,抗氧化剂,,additive|fortifier
+INS307,307,,,维生素E,Vitamin E,抗氧化剂,GB 2760 包括 dl-α-生育酚、d-α-生育酚、混合生育酚浓缩物,additive|fortifier
+INS160a,"160a(i),160a(iii),160a(iv)",,,β-胡萝卜素,beta-Carotene,着色剂,,additive|fortifier
+INS161b,161b(i),,,叶黄素,Lutein,着色剂,,additive|fortifier
+INS101,"101(i),101(iii)",,,核黄素,Riboflavin,着色剂,,additive|fortifier
+INS170i,170(i),,,碳酸钙,Calcium carbonate,膨松剂,GB 2760 功能：膨松剂、面粉处理剂、稳定剂,additive|fortifier
+INS504i,504(i),,,碳酸镁,Magnesium carbonate,面粉处理剂,GB 2760 功能：面粉处理剂、膨松剂、稳定剂、抗结剂,additive|fortifier
+INS327,327,,,乳酸钙,Calcium lactate,酸度调节剂,GB 2760 功能：酸度调节剂、抗氧化剂、乳化剂、稳定剂和凝固剂、增稠剂,additive|fortifier
+INS509,509,,,氯化钙,Calcium chloride,稳定剂和凝固剂,GB 2760 功能：稳定剂和凝固剂、增稠剂、其他,additive|fortifier
+INS516,516,,,硫酸钙,Calcium sulfate,稳定剂和凝固剂,GB 2760 功能：稳定剂和凝固剂、增稠剂、酸度调节剂,additive|fortifier
+INS511,511,,,氯化镁,Magnesium chloride,稳定剂和凝固剂,GB 2760 功能：稳定剂和凝固剂、增味剂,additive|fortifier
+INS341ii,341(ii),,,磷酸氢钙,Calcium hydrogen phosphate,水分保持剂,GB 2760 磷酸及磷酸盐,additive|fortifier
+INS341iii,341(iii),,,磷酸三钙,Tricalcium phosphate,水分保持剂,GB 2760 磷酸及磷酸盐,additive|fortifier
+INS340i,340(i),,,磷酸二氢钾,Potassium dihydrogen phosphate,水分保持剂,GB 2760 磷酸及磷酸盐,additive|fortifier
+INS340ii,340(ii),,,磷酸氢二钾,Dipotassium hydrogen phosphate,水分保持剂,GB 2760 磷酸及磷酸盐,additive|fortifier
+INS332ii,332(ii),,,柠檬酸钾,Tripotassium citrate,酸度调节剂,,additive|fortifier
+INS508,508,,,氯化钾,Potassium chloride,其他,,additive|fortifier
+INS518,518,,,硫酸镁,Magnesium sulfate,其他,,additive|fortifier
+INS579,579,,,葡萄糖酸亚铁,Ferrous gluconate,护色剂,,additive|fortifier
+INS381,381,,,柠檬酸铁铵,Ferric ammonium citrate,抗结剂,,additive|fortifier
+CAS7733-02-0,,7733-02-0,,硫酸锌,Zinc sulfate,其他,GB 2760 无 INS 号,additive|fortifier
+CAS7720-78-7,,7720-78-7,,硫酸亚铁,Ferrous sulfate,其他,GB 2760 无 INS 号,additive|fortifier
+CAS127-47-9,,127-47-9,,醋酸视黄酯,Retinyl acetate,营养强化剂,,fortifier
+CAS79-81-2,,79-81-2,,棕榈酸视黄酯,Retinyl palmitate,营养强化剂,,fortifier
+CAS67-97-0,,67-97-0,,胆钙化醇,Cholecalciferol,营养强化剂,,fortifier
+CAS50-14-6,,50-14-6,,麦角钙化醇,Ergocalciferol,营养强化剂,,fortifier
+CAS84-80-0,,84-80-0,,植物甲萘醌,Phytonadione,营养强化剂,,fortifier
+CAS67-03-8,,67-03-8,,盐酸硫胺素,Thiamine hydrochloride,营养强化剂,,fortifier
+CAS532-43-4,,532-43-4,,硝酸硫胺素,Thiamine mononitrate,营养强化剂,,fortifier
+CAS58-56-0,,58-56-0,,盐酸吡哆醇,Pyridoxine hydrochloride,营养强化剂,,fortifier
+CAS68-19-9,,68-19-9,,氰钴胺,Cyanocobalamin,营养强化剂,,fortifier
+CAS59-67-6,,59-67-6,,烟酸,Nicotinic acid,营养强化剂,,fortifier
+CAS98-92-0,,98-92-0,,烟酰胺,Nicotinamide,营养强化剂,,fortifier
+CAS59-30-3,,59-30-3,,叶酸,Folic acid,营养强化剂,,fortifier
+CAS137-08-6,,137-08-6,,D-泛酸钙,Calcium D-pantothenate,营养强化剂,,fortifier
+CAS58-85-5,,58-85-5,,D-生物素,Biotin,营养强化剂,,fortifier
+CAS67-48-1,,67-48-1,,氯化胆碱,Choline chloride,营养强化剂,,fortifier
+CAS141-01-5,,141-01-5,,富马酸亚铁,Ferrous fumarate,营养强化剂,,fortifier
+CAS5905-52-2,,5905-52-2,,乳酸亚铁,Ferrous lactate,营养强化剂,,fortifier
+CAS10058-44-3,,10058-44-3,,焦磷酸铁,Ferric pyrophosphate,营养强化剂,,fortifier
+CAS15708-41-5,,15708-41-5,,乙二胺四乙酸铁钠,Ferric sodium EDTA,营养强化剂,,fortifier
+CAS299-28-5,,299-28-5,,葡萄糖酸钙,Calcium gluconate,营养强化剂,,fortifier
+CAS813-94-5,,813-94-5,,柠檬酸钙,Calcium citrate,营养强化剂,,fortifier
+CAS4468-02-4,,4468-02-4,,葡萄糖酸锌,Zinc gluconate,营养强化剂,,fortifier
+CAS1314-13-2,,1314-13-2,,氧化锌,Zinc oxide,营养强化剂,,fortifier
+CAS16039-53-5,,16039-53-5,,乳酸锌,Zinc lactate,营养强化剂,,fortifier
+CAS1309-48-4,,1309-48-4,,氧化镁,Magnesium oxide,营养强化剂,,fortifier
+CAS299-27-4,,299-27-4,,葡萄糖酸钾,Potassium gluconate,营养强化剂,,fortifier
+CAS10102-18-8,,10102-18-8,,亚硒酸钠,Sodium selenite,营养强化剂,,fortifier
+CAS107-35-7,,107-35-7,,牛磺酸,Taurine,营养强化剂,,fortifier
+GB14880-DHA,,,,二十二碳六烯酸油脂,,营养强化剂,没有单一的 INS 或 CAS 编号。GB 14880 表B.1 写明的来源：裂壶藻、吾肯氏壶藻、寇氏隐甲藻、金枪鱼油,fortifier

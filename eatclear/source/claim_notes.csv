@@ -1,2 +1,13 @@
 jurisdiction,claim_key,claim_name_zh,kind,explain
 CN,sucrose_free,0蔗糖,non_regulated,这个说法在 GB 28050 里没有对应的数值定义，无法用营养成分表对照。可以看看"懂法"里关于"0蔗糖"的说明。
+CN,reduced_energy,减少能量,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_protein,增加蛋白质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_protein,减少蛋白质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_fat,减少脂肪,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_cholesterol,减少胆固醇,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_carbohydrate,减少碳水化合物,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_sugar,减少糖,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_fiber,增加膳食纤维,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_sodium,减少钠,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_vitamin,增加维生素,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_saturated_fat,减少饱和脂肪,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。

@@ -304,7 +304,7 @@ class TestNotes(BuildTestCase):
         self.assertNotEqual(self.run_build(), 0)
 
     def test_subject_keys_checked_per_type(self):
-        self.append("allergens.csv", "milk,牛奶,1")
+        # milk、防腐剂、INS202 都来自随仓库提供的 source/ 数据
         cases = {
             "allergen": ("milk", "not_an_allergen"),
             "function_class": ("防腐剂", "不存在的类别"),
@@ -448,7 +448,10 @@ class TestNoteLinks(BuildTestCase):
             ("n-sodium", "GB 28050 预包装食品营养标签通则", "https://sppt.cfsa.net.cn/")])
 
     def test_shipped_note_files_have_headers(self):
-        self.assertEqual(build.read_note_links(DATA_DIR / "source"), [])
+        links = build.read_note_links(DATA_DIR / "source")
+        self.assertTrue(links)
+        for _, _, url in links:
+            self.assertTrue(url.startswith("https://"), url)
         for name, header in (("notes.csv", NOTES_HEADER), ("note_sources.csv", SOURCES_HEADER)):
             with self.subTest(file=name):
                 first = (DATA_DIR / "source" / name).read_text(encoding="utf-8").splitlines()[0]
