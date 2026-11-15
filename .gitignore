@@ -1,0 +1,7 @@
+eatclear/dist/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Claude Code 的本地说明文件，不提交
+CLAUDE.md

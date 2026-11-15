@@ -1,0 +1,23 @@
+jurisdiction,claim_key,claim_name_zh,nutrient,comparator,threshold,unit,basis,standard,standard_version,source_ref,effective_from,verified
+CN,energy_free,无能量,energy,<=,17,kJ,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,energy_free,无能量,energy,<=,17,kJ,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_energy,低能量,energy,<=,170,kJ,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_energy,低能量,energy,<=,80,kJ,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,fat_free,无脂肪,fat,<=,0.5,g,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,fat_free,无脂肪,fat,<=,0.5,g,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_fat,低脂肪,fat,<=,3,g,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_fat,低脂肪,fat,<=,1.5,g,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,sugar_free,无糖,sugar,<=,0.5,g,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,sugar_free,无糖,sugar,<=,0.5,g,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_sugar,低糖,sugar,<=,5,g,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_sugar,低糖,sugar,<=,5,g,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,sodium_free,无钠,sodium,<=,5,mg,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,sodium_free,无钠,sodium,<=,5,mg,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,very_low_sodium,极低钠,sodium,<=,40,mg,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,very_low_sodium,极低钠,sodium,<=,40,mg,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_sodium,低钠,sodium,<=,120,mg,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,low_sodium,低钠,sodium,<=,120,mg,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,high_protein,高蛋白,protein,>=,20,%NRV,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,high_protein,高蛋白,protein,>=,10,%NRV,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,high_calcium,高钙,calcium,>=,30,%NRV,per100g,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0
+CN,high_calcium,高钙,calcium,>=,15,%NRV,per100ml,GB 28050,2011,GB 28050-2011 附录C 表C.1,,0

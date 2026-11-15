@@ -1,0 +1,78 @@
+alias,substance_id,lang
+山梨酸,INS200,zh
+sorbic acid,INS200,en
+E200,INS200,code
+山梨酸钾,INS202,zh
+potassium sorbate,INS202,en
+E202,INS202,code
+苯甲酸,INS210,zh
+benzoic acid,INS210,en
+E210,INS210,code
+苯甲酸钠,INS211,zh
+sodium benzoate,INS211,en
+E211,INS211,code
+二氧化硫,INS220,zh
+E220,INS220,code
+亚硝酸钠,INS250,zh
+sodium nitrite,INS250,en
+E250,INS250,code
+抗坏血酸,INS300,zh
+维生素C,INS300,zh
+ascorbic acid,INS300,en
+E300,INS300,code
+特丁基对苯二酚,INS319,zh
+TBHQ,INS319,en
+E319,INS319,code
+柠檬酸,INS330,zh
+枸橼酸,INS330,zh
+citric acid,INS330,en
+E330,INS330,code
+磷脂,INS322,zh
+大豆磷脂,INS322,zh
+卵磷脂,INS322,zh
+lecithin,INS322,en
+E322,INS322,code
+黄原胶,INS415,zh
+xanthan gum,INS415,en
+E415,INS415,code
+柠檬黄,INS102,zh
+tartrazine,INS102,en
+E102,INS102,code
+胭脂红,INS124,zh
+E124,INS124,code
+诱惑红,INS129,zh
+allura red,INS129,en
+E129,INS129,code
+山梨糖醇,INS420,zh
+sorbitol,INS420,en
+E420,INS420,code
+乙酰磺胺酸钾,INS950,zh
+安赛蜜,INS950,zh
+acesulfame potassium,INS950,en
+acesulfame k,INS950,en
+E950,INS950,code
+阿斯巴甜,INS951,zh
+aspartame,INS951,en
+E951,INS951,code
+糖精钠,INS954,zh
+sodium saccharin,INS954,en
+E954,INS954,code
+三氯蔗糖,INS955,zh
+蔗糖素,INS955,zh
+sucralose,INS955,en
+E955,INS955,code
+甜菊糖苷,INS960,zh
+甜菊糖,INS960,zh
+steviol glycosides,INS960,en
+E960,INS960,code
+木糖醇,INS967,zh
+xylitol,INS967,en
+E967,INS967,code
+赤藓糖醇,INS968,zh
+erythritol,INS968,en
+E968,INS968,code
+谷氨酸钠,INS621,zh
+味精,INS621,zh
+monosodium glutamate,INS621,en
+MSG,INS621,en
+E621,INS621,code

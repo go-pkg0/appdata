@@ -1,0 +1,79 @@
+name: eatclear-data
+
+# 吃得明白（EatClear）的数据检查和发布。
+#
+# 1. 修改 eatclear/ 下的文件时：运行测试并试构建
+# 2. 推送 eatclear-v* 标签时（如 eatclear-v2026.11.15）：
+#    - 创建这个版本的 Release，上传数据文件和 manifest.json
+#    - 把 manifest.json 覆盖到固定的 eatclear-latest Release，App 从这里检查更新
+#
+# 为什么不用 GitHub 的 "latest"：这个仓库放多个 App 的数据，
+# 一个仓库只有一个 "latest"，所以每个 App 用自己固定的 <app>-latest。
+
+on:
+  push:
+    branches: [main]
+    paths: ["eatclear/**", ".github/workflows/eatclear-data.yml"]
+    tags: ["eatclear-v*"]
+  pull_request:
+    paths: ["eatclear/**"]
+
+permissions:
+  contents: write
+
+env:
+  LATEST_TAG: eatclear-latest
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: python3 -m unittest discover -s eatclear/tests -v
+      - name: Build
+        run: python3 eatclear/build.py --version "ci-${GITHUB_SHA::7}"
+
+  release:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/eatclear-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#eatclear-v}"
+          python3 eatclear/build.py \
+            --version "$VERSION" \
+            --url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/"
+          cat eatclear/dist/manifest.json
+
+      - name: Publish version release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            eatclear/dist/eatclear-data.sqlite \
+            eatclear/dist/manifest.json \
+            --title "吃得明白 数据 ${GITHUB_REF_NAME#eatclear-v}" \
+            --notes "自动构建的数据包。manifest.json 里有版本号、文件校验值和各表的数量。" \
+            --latest=false
+
+      - name: Update eatclear-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$LATEST_TAG" > /dev/null 2>&1; then
+            gh release create "$LATEST_TAG" \
+              --title "吃得明白 数据（当前版本说明）" \
+              --notes "这里只放当前版本的 manifest.json，每次发布数据时自动覆盖。请不要手动删除。" \
+              --latest=false
+          fi
+          gh release upload "$LATEST_TAG" eatclear/dist/manifest.json --clobber
