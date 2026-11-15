@@ -157,6 +157,58 @@ class TestM1Content(unittest.TestCase):
             with self.subTest(without=key):
                 self.assertEqual(set(values(key)), {None})
 
+    def test_final_review_additions(self):
+        patterns = dict(self.conn.execute(
+            "SELECT pattern_norm, claim_key FROM claim_patterns WHERE jurisdiction = 'CN'").fetchall())
+        kinds = dict(self.conn.execute("SELECT claim_key, kind FROM claim_notes").fetchall())
+        salt = patterns.get(build.normalize("低钠盐"))
+        self.assertEqual(kinds.get(salt), "non_regulated")
+        self.assertEqual(patterns.get(build.normalize("低钠")), "low_sodium")
+        self.assertNotIn(build.normalize("0卡"), patterns)
+        for pattern, key in (("无卡", "energy_free"), ("无千卡", "energy_free"), ("无卡路里", "energy_free"),
+                             ("零卡", "energy_free"), ("零卡路里", "energy_free"), ("零千卡", "energy_free"),
+                             ("低卡", "low_energy"), ("低千卡", "low_energy"), ("低卡路里", "low_energy"),
+                             ("高纤维", "high_fiber"), ("富含纤维", "high_fiber"), ("不含蔗糖", "sucrose_free")):
+            with self.subTest(pattern=pattern):
+                self.assertEqual(patterns.get(build.normalize(pattern)), key)
+        phrases = set(self.column("SELECT phrase_norm FROM label_phrases WHERE kind = 'allergen_may_contain'"))
+        for phrase in ("生产线还生产", "生产线也生产", "共用生产线", "共用车间", "同一车间", "可能会含有", "或含有"):
+            with self.subTest(may_contain=phrase):
+                self.assertIn(build.normalize(phrase), phrases)
+        terms = {(norm, kind): key for norm, key, kind in self.conn.execute(
+            "SELECT term_norm, allergen_key, kind FROM allergen_terms").fetchall()}
+        for term, key in (("生乳", "milk"), ("芝士", "milk"), ("乳酪", "milk"), ("发酵乳", "milk"),
+                          ("乳蛋白", "milk"), ("浓缩乳蛋白", "milk"), ("谷朊粉", "gluten"), ("面筋", "gluten"),
+                          ("面粉", "gluten"), ("全麦粉", "gluten"), ("青稞", "gluten"), ("蛋粉", "egg"),
+                          ("蛋液", "egg")):
+            with self.subTest(ingredient=term):
+                self.assertEqual(terms.get((build.normalize(term), "ingredient")), key)
+        self.assertEqual(terms.get((build.normalize("鱼香"), "not_allergen")), "fish")
+
+    def test_isoascorbate_matches_its_own_substance(self):
+        aliases = dict(self.conn.execute("SELECT alias_norm, substance_id FROM aliases").fetchall())
+
+        def scan(text):
+            """App 的规则：从左往右，在每个位置取最长的写法。"""
+            text, found, i = build.normalize(text), [], 0
+            longest = max(map(len, aliases))
+            while i < len(text):
+                for size in range(min(longest, len(text) - i), 0, -1):
+                    if text[i:i + size] in aliases:
+                        found.append(aliases[text[i:i + size]])
+                        i += size
+                        break
+                else:
+                    i += 1
+            return found
+
+        self.assertEqual(scan("D-异抗坏血酸钠"), ["INS316"])
+        self.assertEqual(scan("异抗坏血酸"), ["INS315"])
+        self.assertEqual(scan("抗坏血酸钠"), ["INS301"])
+        roles = dict(self.conn.execute("SELECT id, roles FROM substances").fetchall())
+        self.assertEqual((roles["INS315"], roles["INS316"]), ("additive", "additive"))
+        self.assertEqual(aliases.get(build.normalize("维生素B2")), "INS101")
+
     def test_every_gb28050_content_claim_has_patterns(self):
         missing = self.column(
             "SELECT DISTINCT r.claim_key FROM claim_rules r WHERE NOT EXISTS ("
@@ -254,7 +306,7 @@ class TestM1Content(unittest.TestCase):
         self.assertGreaterEqual(len(keys("tip")), 5)
 
     def test_all_new_rows_unverified(self):
-        for table in ("notes", "note_sources"):
+        for table in ("notes", "note_sources", "claim_rules", "nrv"):
             with self.subTest(table=table):
                 self.assertEqual(self.column(f"SELECT COUNT(*) FROM {table} WHERE verified != 0"), [0])
 

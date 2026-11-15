@@ -292,6 +292,67 @@ class TestSchema3(BuildTestCase):
         self.assertTrue(any("test_warn" in w and "安全" in w for w in warnings), warnings)
         self.assertTrue(any("test_warn_note" in w and "风险" in w for w in warnings), warnings)
 
+    def build_fails_with(self, name, line):
+        path = self.source / name
+        original = path.read_text(encoding="utf-8")
+        self.append(name, line)
+        try:
+            self.assertNotEqual(self.run_build(), 0, line)
+        finally:
+            path.write_text(original, encoding="utf-8")
+
+    def test_amounts_must_be_finite_and_not_negative(self):
+        for line in ("CN,t_nan,测试,sugar,<=,nan,g,per100g,GB 28050,2011,ref,,0,,",
+                     "CN,t_inf,测试,sugar,<=,inf,g,per100g,GB 28050,2011,ref,,0,,",
+                     "CN,t_neg,测试,sugar,<=,-1,g,per100g,GB 28050,2011,ref,,0,,",
+                     "CN,t_420,测试,fiber,>=,3,g,per100g,GB 28050,2011,ref,,0,,-1.5",
+                     "CN,t_420i,测试,fiber,>=,3,g,per100g,GB 28050,2011,ref,,0,,inf"):
+            with self.subTest(line=line):
+                self.build_fails_with("claim_rules.csv", line)
+        for line in ("CN,iodine_test,inf,μg,GB 28050,2011,0", "CN,iodine_test,-150,μg,GB 28050,2011,0",
+                     "CN,iodine_test,nan,μg,GB 28050,2011,0"):
+            with self.subTest(line=line):
+                self.build_fails_with("nrv.csv", line)
+
+    def test_sort_order_must_be_integer(self):
+        for value in ("1.5", "inf", "nan", "一"):
+            with self.subTest(value=value):
+                self.build_fails_with("allergens.csv", f"testkey,测试类,{value}")
+
+    def test_duplicate_primary_keys_become_build_errors(self):
+        with mock.patch("sys.stderr"):
+            self.build_fails_with("claim_rules.csv",
+                                  "CN,low_sugar,低糖,sugar,<=,5,g,per100g,GB 28050,2011,ref,,0,,")
+            self.build_fails_with("nutrient_names.csv", "糖,sugar")
+
+    def test_bom_header_is_read(self):
+        path = self.source / "settings.csv"
+        path.write_text("\ufeff" + path.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertEqual(self.run_build(), 0)
+        conn = sqlite3.connect(self.out / "eatclear-data.sqlite")
+        self.assertEqual(conn.execute("SELECT value FROM settings WHERE key='sugar_cube_grams'").fetchone()[0], "4.5")
+
+    def test_empty_after_normalize_rejected(self):
+        self.build_fails_with("claim_patterns.csv", "CN,\u200b,low_sugar")
+        self.build_fails_with("nutrient_names.csv", "\u200b,sugar")
+
+    def test_rule_nutrient_must_have_a_name(self):
+        self.build_fails_with("claim_rules.csv",
+                              "CN,t_unknown,测试,not_a_nutrient,<=,1,g,per100g,GB 28050,2011,ref,,0,,")
+
+    def test_banned_words_in_sources_names_and_phrases_warn(self):
+        self.append("note_sources.csv", source_row(note_id="n-sodium").replace("某文件", "监管文件"))
+        # n-sodium 是随仓库数据里已有的说明
+        self.append("claim_rules.csv", "CN,t_name,官方低糖,sugar,<=,5,g,per100g,GB 28050,2011,ref,,0,,")
+        self.append("claim_patterns.csv", "CN,测试官方低糖,t_name")
+        self.append("label_phrases.csv", "notice,经过检测")
+        self.assertEqual(self.run_build(), 0)
+        warnings = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))["warnings"]
+        for word in ("监管", "官方", "检测"):
+            with self.subTest(word=word):
+                self.assertTrue(any(word in w for w in warnings), warnings)
+        self.assertEqual(build.banned_words_in("《食安文件》里的“认证”"), [])
+
     def test_manifest_counts_new_tables(self):
         self.assertEqual(self.run_build(), 0)
         counts = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))["counts"]
@@ -453,7 +514,15 @@ class TestNotes(BuildTestCase):
 
     def test_current_year_is_utc_year(self):
         import datetime
-        self.assertEqual(build.current_year(), datetime.datetime.now(datetime.timezone.utc).year)
+
+        class FixedDateTime(datetime.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                # UTC 2030-12-31 20:00，东八区已经是 2031 年；应按 UTC 取 2030
+                return datetime.datetime(2030, 12, 31, 20, 0, tzinfo=datetime.timezone.utc).astimezone(tz)
+
+        with mock.patch.object(build.dt, "datetime", FixedDateTime):
+            self.assertEqual(build.current_year(), 2030)
 
     def test_method_required(self):
         self.set_sources(source_row(method=""))

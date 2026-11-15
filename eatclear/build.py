@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-把 data/source 下的源文件构建成 App 使用的 SQLite 数据包。
+把 eatclear/source 下的源文件构建成 App 使用的 SQLite 数据包。
 
 用法（在 appdata 仓库根目录运行）:
     python3 eatclear/build.py                       # 输出到 eatclear/dist/
@@ -19,6 +19,7 @@ import csv
 import datetime as dt
 import hashlib
 import json
+import math
 import re
 import shutil
 import sqlite3
@@ -56,7 +57,7 @@ STUDY_TYPES = ("系统综述", "荟萃分析")
 # 级别 3 的论文发表超过这么多年，标为"较早的研究"
 DATED_AFTER_YEARS = 10
 # App 自己的文案里不用这些词。出现时只警告，不让构建失败
-BANNED_WORDS = ("不安全", "安全", "风险", "有害", "不合格", "合格", "超标")
+BANNED_WORDS = ("不安全", "安全", "风险", "有害", "不合格", "合格", "超标", "检测", "认证", "官方", "监管", "食安")
 # 引号和书名号里的内容是引用原文，不检查
 _QUOTED = re.compile("“[^”]*”|\"[^\"]*\"|「[^」]*」|《[^》]*》")
 # 长的词放前面，"不安全"不会被拆成"不"和"安全"
@@ -90,7 +91,8 @@ def read_csv(name: str, source: Path | None = None) -> list[dict[str, str]]:
     path = (source or SOURCE) / name
     if not path.exists():
         raise BuildError(f"缺少源文件: {path}")
-    with path.open(encoding="utf-8", newline="") as f:
+    # utf-8-sig：表格软件另存的 CSV 开头可能带 BOM，不去掉的话第一列表头会错位
+    with path.open(encoding="utf-8-sig", newline="") as f:
         rows = []
         for i, row in enumerate(csv.DictReader(f), start=2):
             row = {k.strip(): (v or "").strip() for k, v in row.items() if k is not None}
@@ -115,6 +117,25 @@ def to_float(row: dict, field: str, allow_empty: bool = False) -> float | None:
         return float(value)
     except ValueError:
         raise BuildError(f"{row['__line__']}: {field} 不是数字: {value!r}") from None
+
+
+def to_amount(row: dict, field: str, allow_empty: bool = False) -> float | None:
+    """数值型的阈值、参考值：必须是有限的非负数。"""
+    value = to_float(row, field, allow_empty)
+    if value is not None and (not math.isfinite(value) or value < 0):
+        raise BuildError(f"{row['__line__']}: {field} 必须是有限的非负数: {row.get(field)!r}")
+    return value
+
+
+def to_int(value: str, where: str, field: str) -> int:
+    if not re.fullmatch(r"-?\d+", value or ""):
+        raise BuildError(f"{where}: {field} 必须是整数: {value!r}")
+    return int(value)
+
+
+def warn_banned(warnings: list[str], where: str, label: str, text: str) -> None:
+    for word in banned_words_in(text or ""):
+        warnings.append(f"{where}: {label}里出现“{word}”，请改写或放进引号")
 
 
 def to_flag(row: dict, field: str) -> int:
@@ -298,6 +319,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
 
     # claim rules
     rule_keys: set[tuple[str, str]] = set()
+    rule_nutrients: dict[str, str] = {}
     for r in read_csv("claim_rules.csv"):
         require(r, "jurisdiction", "claim_key", "claim_name_zh", "nutrient", "comparator", "threshold",
                 "unit", "basis", "standard", "standard_version", "source_ref")
@@ -309,15 +331,21 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if not verified:
             unverified["claim_rules"] = unverified.get("claim_rules", 0) + 1
         rule_keys.add((r["jurisdiction"], r["claim_key"]))
+        rule_nutrients[r["nutrient"]] = r["__line__"]
         for word in banned_words_in(r.get("condition", "")):
             warnings.append(f"{r['__line__']}: 声称 {r['claim_key']} 的条件里出现“{word}”，请改写或放进引号")
-        cur.execute(
-            "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["nutrient"], r["comparator"],
-             to_float(r, "threshold"), r["unit"], r["basis"], r["standard"], r["standard_version"],
-             r["source_ref"], check_date(r, "effective_from"), verified, r.get("condition") or None,
-             to_float(r, "per420kj_threshold", allow_empty=True)),
-        )
+        warn_banned(warnings, r["__line__"], f"声称 {r['claim_key']} 的名称", r["claim_name_zh"])
+        try:
+            cur.execute(
+                "INSERT INTO claim_rules VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (r["jurisdiction"], r["claim_key"], r["claim_name_zh"], r["nutrient"], r["comparator"],
+                 to_amount(r, "threshold"), r["unit"], r["basis"], r["standard"], r["standard_version"],
+                 r["source_ref"], check_date(r, "effective_from"), verified, r.get("condition") or None,
+                 to_amount(r, "per420kj_threshold", allow_empty=True)),
+            )
+        except sqlite3.IntegrityError:
+            raise BuildError(f"{r['__line__']}: 声称规则重复（{r['jurisdiction']} {r['claim_key']} "
+                             f"{r['basis']} {r['standard_version']}）") from None
 
     # NRV
     nrv_keys: set[tuple[str, str]] = set()
@@ -329,7 +357,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         nrv_keys.add((r["jurisdiction"], r["nutrient"]))
         cur.execute(
             "INSERT INTO nrv VALUES (?,?,?,?,?,?,?)",
-            (r["jurisdiction"], r["nutrient"], to_float(r, "value"), r["unit"], r["standard"],
+            (r["jurisdiction"], r["nutrient"], to_amount(r, "value"), r["unit"], r["standard"],
              r["standard_version"], verified),
         )
 
@@ -365,6 +393,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if key not in rule_keys and key not in note_keys:
             raise BuildError(f"{r['__line__']}: claim_key {r['claim_key']} 在 claim_rules.csv 和 claim_notes.csv 里都没有")
         norm = normalize(r["pattern"])
+        if not norm:
+            raise BuildError(f"{r['__line__']}: pattern 归一化后为空")
         pkey = (r["jurisdiction"], norm)
         if pkey in pattern_owner:
             raise BuildError(f"{r['__line__']}: 说法 {r['pattern']!r} 重复")
@@ -375,8 +405,18 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
     nutrient_keys: set[str] = set()
     for r in read_csv("nutrient_names.csv"):
         require(r, "name", "nutrient")
+        norm = normalize(r["name"])
+        if not norm:
+            raise BuildError(f"{r['__line__']}: name 归一化后为空")
         nutrient_keys.add(r["nutrient"])
-        cur.execute("INSERT INTO nutrient_names VALUES (?,?,?)", (r["name"], normalize(r["name"]), r["nutrient"]))
+        try:
+            cur.execute("INSERT INTO nutrient_names VALUES (?,?,?)", (r["name"], norm, r["nutrient"]))
+        except sqlite3.IntegrityError:
+            raise BuildError(f"{r['__line__']}: 营养素名称 {r['name']!r} 重复") from None
+    # 声称规则用到的营养素必须能在营养成分表上认出来
+    for nutrient, where in rule_nutrients.items():
+        if nutrient not in nutrient_keys:
+            raise BuildError(f"{where}: 营养素 {nutrient} 不在 nutrient_names.csv 里")
 
     # settings
     setting_keys: set[str] = set()
@@ -399,6 +439,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if (r["kind"], norm) in phrase_keys:
             raise BuildError(f"{r['__line__']}: {r['kind']} 里的 {r['phrase']!r} 重复")
         phrase_keys.add((r["kind"], norm))
+        warn_banned(warnings, r["__line__"], "标签短语", r["phrase"])
         cur.execute("INSERT INTO label_phrases VALUES (?,?,?)", (r["kind"], r["phrase"], norm))
 
     # allergens
@@ -409,7 +450,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
             raise BuildError(f"{r['__line__']}: 重复的致敏物质 key {r['key']}")
         allergen_keys.add(r["key"])
         cur.execute("INSERT INTO allergens VALUES (?,?,?)",
-                    (r["key"], r["name_zh"], int(to_float(r, "sort_order"))))
+                    (r["key"], r["name_zh"], to_int(r["sort_order"], r["__line__"], "sort_order")))
 
     # allergen terms
     term_keys: set[tuple[str, str]] = set()
@@ -483,6 +524,8 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if not verified:
             unverified["note_sources"] = unverified.get("note_sources", 0) + 1
         order = source_counts[r["note_id"]] = source_counts.get(r["note_id"], 0) + 1
+        for field, label in (("org", "依据的机构"), ("title", "依据的标题"), ("method", "依据的判定方式")):
+            warn_banned(warnings, r["__line__"], f"说明 {r['note_id']} {label}", r[field])
         cur.execute("INSERT INTO note_sources VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (r["note_id"], order, tier, r["org"], r["title"], year, r["url"], r["method"],
                      study_type, is_dated, verified))
@@ -499,7 +542,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
             raise BuildError(f"{r['__line__']}: 重复的分类 id {r['id']}")
         category_ids.add(r["id"])
         cur.execute("INSERT INTO law_categories VALUES (?,?,?,?,?)",
-                    (r["id"], r["jurisdiction"], int(to_float(r, "sort_order")), r["title"], r["summary"]))
+                    (r["id"], r["jurisdiction"], to_int(r["sort_order"], r["__line__"], "sort_order"), r["title"], r["summary"]))
 
     # law articles + links
     article_ids: set[str] = set()
@@ -521,7 +564,7 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
             raise BuildError(f"{path.name}: 至少要有一个原文链接（link: 标题 | https://...）")
         cur.execute(
             "INSERT INTO law_articles VALUES (?,?,?,?,?,?,?,?)",
-            (meta["id"], meta["jurisdiction"], meta["category"], int(meta.get("sort_order", "0")),
+            (meta["id"], meta["jurisdiction"], meta["category"], to_int(meta.get("sort_order", "0"), path.name, "sort_order"),
              meta["title"], meta["summary"], body, meta["updated_at"]),
         )
         for order, line in enumerate(links, start=1):

@@ -3,7 +3,7 @@
 --   1. 一开始就支持多国家/地区（jurisdiction: CN, EU, US, CODEX）
 --   2. 每条规定都记录标准名称、版本、实施日期和原文出处，方便核查
 --   3. verified = 1 表示已经对照官方原文核实；0 表示待核实，App 会显示提示
--- 修改结构时，请同时提高 data/build.py 里的 SCHEMA_VERSION。
+-- 修改结构时，请同时提高 eatclear/build.py 里的 SCHEMA_VERSION。
 
 PRAGMA foreign_keys = ON;
 

@@ -22,3 +22,14 @@ standard_code,执行标准号
 product_name,产品名称
 product_name,食品名称
 product_name,品名
+allergen_may_contain,生产线还生产
+allergen_may_contain,生产线也生产
+allergen_may_contain,共用生产线
+allergen_may_contain,共用车间
+allergen_may_contain,共用生产车间
+allergen_may_contain,同一车间
+allergen_may_contain,可能会含有
+allergen_may_contain,或含有
+allergen_may_contain,可能含微量
+allergen_may_contain,生产设备还加工
+allergen_may_contain,生产设备也加工

@@ -54,15 +54,15 @@ App 按字面查找，长的写法优先，所以不用为了包含关系专门�
 | `settings.csv` | `key,value,note` | |
 | `label_phrases.csv` | `kind,phrase` | `kind`：`allergen_section`、`allergen_may_contain`、`audience`、`notice`、`standard_code`、`product_name` |
 | `allergens.csv` | `key,name_zh,sort_order` | 8 类，按 GB 7718 的顺序 |
-| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）、`ingredient`（配料表里的原料）、`exempt` 或 `not_allergen`，后两种的 `allergen_key` 写它本来会被匹配到的类别。`exempt` 只收 GB 7718-2025 附录D.4 写明可以免于致敏物质标示的配料，按原文写法录（如"精炼大豆油""大豆磷脂"）；不带"精炼"的"大豆油""花生油""鱼油"不算，因为原文只豁免精炼过的。`not_allergen` 收字面上含有某类致敏物质、但并不是这类物质的写法（如"鱿鱼"不是鱼类，"花生四烯酸"不是花生，"植物奶油"不是乳）。App 按最长写法匹配，被这两种写法占住的文字不再算作致敏物质 |
+| `allergen_terms.csv` | `term,allergen_key,kind` | `kind`：`statement`（致敏物质提示里的写法）、`ingredient`（配料表里的原料）、`exempt` 或 `not_allergen`，后两种的 `allergen_key` 写它本来会被匹配到的类别。`exempt` 只收 GB 7718-2025 附录D.4 写明可以免于致敏物质标示的配料，按原文列出的配料录，可用常见写法（如原文"大豆来源的……磷脂"录成"大豆磷脂""大豆卵磷脂"）；不带"精炼"的"大豆油""花生油""鱼油"不算，因为原文只豁免精炼过的。`not_allergen` 收字面上含有某类致敏物质、但并不是这类物质的写法（如"鱿鱼"不是鱼类，"花生四烯酸"不是花生，"植物奶油"不是乳）。App 按最长写法匹配，被这两种写法占住的文字不再算作致敏物质 |
 | `notes.csv` | `id,subject_type,subject_key,title,body,verified` | `subject_type`：`nutrient`（`subject_key` 是营养素 key）、`allergen`（致敏物质 key）、`function_class`（功能类别名）、`substance`（物质 id）、`tip`（小知识，`subject_key` 写自己的 id）。正文 2～4 句 |
 | `note_sources.csv` | `note_id,tier,org,title,year,url,method,study_type,verified` | 见下一节。同一条说明的依据按文件里的先后排序 |
 
-`claim_rules.csv` 的数值部分只能表达"某个营养素 每100克/每100毫升 ≤ 或 ≥ 某个数"。最后一列 `condition` 写标准里的限制性条件（如"仅指乳品类"、"指饱和脂肪和反式脂肪的总和"、"脂肪提供的能量不超过总能量的50%"），用一两句大白话写清标准还要求什么；没有条件时留空。有条件的规则，App 在数值不满足时显示"存在差异"，满足时显示"无法对照"并附上这段文字，不会显示"一致"。
+`claim_rules.csv` 的数值部分只能表达"某个营养素 每100克/每100毫升 ≤ 或 ≥ 某个数"。倒数第二列 `condition` 写标准里的限制性条件（如"仅指乳品类"、"指饱和脂肪和反式脂肪的总和"、"脂肪提供的能量不超过总能量的50%"），用一两句大白话写清标准还要求什么；没有条件时留空。有条件的规则，App 在数值不满足时显示"存在差异"，满足时显示"无法对照"并附上这段文字，不会显示"一致"。
 
 表C.1 对蛋白质、膳食纤维、维生素、矿物质的"来源"和"高"声称，还给了"每420千焦"的替代要求。这个数写在 `per420kj_threshold` 列，单位和 `threshold` 相同（如膳食纤维写克，维生素写 %NRV），每100克和每100毫升两行都填（国家卫健委《GB 28050-2025 问答》第四十二条把三种要求并列为"或"）；没有替代要求的留空。按 `basis` 不满足时，App 用营养成分表的能量一行换算成每420千焦再比一次。
 
-膳食纤维的限制性条件写的是"膳食纤维总量符合含量要求；或者可溶性、不可溶性膳食纤维或单体成分任一项符合"。这几项都包含在总量里，任一项达标时总量也达标，所以只按总量录入，不写进 `condition`。
+膳食纤维的限制性条件（2011 版）大意是：膳食纤维总量符合含量要求，或者可溶性膳食纤维、不溶性膳食纤维、单体成分其中一项符合含量要求即可；2025 版原文写的是"膳食纤维总量符合含量要求；或者可溶性膳食纤维、不溶性膳食纤维、膳食纤维单体成分符合含量要求"。这几项都包含在总量里，其中一项达标时总量也达标，所以只按总量录入，不写进 `condition`。
 
 ## 说明和依据
 
@@ -82,13 +82,14 @@ App 按字面查找，长的写法优先，所以不用为了包含关系专门�
 
 ## 禁用词警告
 
-App 自己的文案不用"安全、不安全、风险、有害、合格、不合格、超标"这些词。构建时检查 `notes.csv` 的标题和正文、`claim_rules.csv` 的 `condition`、`claim_notes.csv` 的 `explain`：这些词出现在引号（“” "" 「」）和书名号（《》）外面时，构建不失败，但会在输出和 `manifest.json` 的 `warnings` 里列出。
+App 自己的文案不用"安全、不安全、风险、有害、合格、不合格、超标、检测、认证、官方、监管、食安"这些词（`build.py` 的 `BANNED_WORDS`）。构建时检查 `notes.csv` 的标题和正文、`note_sources.csv` 的 `org`/`title`/`method`、`claim_rules.csv` 的 `claim_name_zh` 和 `condition`、`claim_notes.csv` 的 `explain`、`label_phrases.csv` 的 `phrase`：这些词出现在引号（“” "" 「」）和书名号（《》）外面时，构建不失败，但会在输出和 `manifest.json` 的 `warnings` 里列出。
 
 处理方法：
 
 1. 能改写的就改写，换成平实的说法（如"风险"改成具体说了什么）。
 2. 转述机构的正式结论、确实需要原词时，用引号原样引用并写明出处，如 IARC 的分类名称。
-3. 发布前 `warnings` 必须为空，`tests/test_content.py` 会检查。
+3. 机构名、文件名里本来就有这些词时（如 WHO 的文件《阿斯巴甜危害及风险评估结果发布》），把文件名放进书名号，不要放宽检查。
+4. 发布前 `warnings` 必须为空，`tests/test_content.py` 会检查。
 
 ## 懂法文章
 
