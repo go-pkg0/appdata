@@ -136,3 +136,7 @@ term,allergen_key,kind
 发酵乳酸菌,milk,not_allergen
 干酪乳杆菌,milk,not_allergen
 副干酪乳杆菌,milk,not_allergen
+鼠李糖乳酪杆菌,milk,not_allergen
+干酪乳酪杆菌,milk,not_allergen
+副干酪乳酪杆菌,milk,not_allergen
+乳酪杆菌,milk,not_allergen

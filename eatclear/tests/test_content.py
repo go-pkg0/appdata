@@ -210,7 +210,9 @@ class TestM1Content(unittest.TestCase):
     def test_probiotic_strain_names_are_not_milk(self):
         not_allergen = dict(self.conn.execute(
             "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'not_allergen'").fetchall())
-        for term in ("发酵乳杆菌", "发酵乳酸杆菌", "发酵乳酸菌", "干酪乳杆菌", "副干酪乳杆菌"):
+        for term in ("发酵乳杆菌", "发酵乳酸杆菌", "发酵乳酸菌", "干酪乳杆菌", "副干酪乳杆菌",
+                     # 乳杆菌属 2020 年重新分类后的写法（二轮复审 I4；中文名未对照菌种名单原文）
+                     "鼠李糖乳酪杆菌", "干酪乳酪杆菌", "副干酪乳酪杆菌", "乳酪杆菌"):
             with self.subTest(term=term):
                 self.assertEqual(not_allergen.get(build.normalize(term)), "milk")
                 self.assertEqual(self.scan_allergens(f"白砂糖、{term}"), [])
@@ -219,6 +221,7 @@ class TestM1Content(unittest.TestCase):
         self.assertEqual(self.scan_allergens("干酪"), [(build.normalize("干酪"), "milk")])
         self.assertEqual(self.scan_allergens("发酵乳、干酪乳杆菌"), [(build.normalize("发酵乳"), "milk")])
         self.assertEqual(self.scan_allergens("干酪乳杆菌、干酪"), [(build.normalize("干酪"), "milk")])
+        self.assertEqual(self.scan_allergens("鼠李糖乳酪杆菌、乳酪"), [(build.normalize("乳酪"), "milk")])
 
     def test_isoascorbate_matches_its_own_substance(self):
         aliases = dict(self.conn.execute("SELECT alias_norm, substance_id FROM aliases").fetchall())
