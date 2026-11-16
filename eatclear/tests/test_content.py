@@ -185,6 +185,41 @@ class TestM1Content(unittest.TestCase):
                 self.assertEqual(terms.get((build.normalize(term), "ingredient")), key)
         self.assertEqual(terms.get((build.normalize("鱼香"), "not_allergen")), "fish")
 
+    def scan_allergens(self, text):
+        """App 的规则：同一个扫描器里从左往右、每个位置取最长的写法；
+        命中 exempt / not_allergen 的位置不产生提示。返回会产生提示的 (写法, 类别)。"""
+        terms = {}
+        for norm, key, kind in self.conn.execute(
+                "SELECT term_norm, allergen_key, kind FROM allergen_terms WHERE kind IN "
+                "('ingredient', 'exempt', 'not_allergen')").fetchall():
+            terms.setdefault(norm, (key, kind))
+        longest = max(map(len, terms))
+        text, found, i = build.normalize(text), [], 0
+        while i < len(text):
+            for size in range(min(longest, len(text) - i), 0, -1):
+                hit = terms.get(text[i:i + size])
+                if hit:
+                    if hit[1] == "ingredient":
+                        found.append((text[i:i + size], hit[0]))
+                    i += size
+                    break
+            else:
+                i += 1
+        return found
+
+    def test_probiotic_strain_names_are_not_milk(self):
+        not_allergen = dict(self.conn.execute(
+            "SELECT term_norm, allergen_key FROM allergen_terms WHERE kind = 'not_allergen'").fetchall())
+        for term in ("发酵乳杆菌", "发酵乳酸杆菌", "发酵乳酸菌", "干酪乳杆菌", "副干酪乳杆菌"):
+            with self.subTest(term=term):
+                self.assertEqual(not_allergen.get(build.normalize(term)), "milk")
+                self.assertEqual(self.scan_allergens(f"白砂糖、{term}"), [])
+        # 真正的乳制品写法仍然命中
+        self.assertEqual(self.scan_allergens("发酵乳、白砂糖"), [(build.normalize("发酵乳"), "milk")])
+        self.assertEqual(self.scan_allergens("干酪"), [(build.normalize("干酪"), "milk")])
+        self.assertEqual(self.scan_allergens("发酵乳、干酪乳杆菌"), [(build.normalize("发酵乳"), "milk")])
+        self.assertEqual(self.scan_allergens("干酪乳杆菌、干酪"), [(build.normalize("干酪"), "milk")])
+
     def test_isoascorbate_matches_its_own_substance(self):
         aliases = dict(self.conn.execute("SELECT alias_norm, substance_id FROM aliases").fetchall())
 

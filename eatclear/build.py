@@ -355,11 +355,15 @@ def build(db_path: Path, version: str, url_prefixes: list[str] | None = None) ->
         if not verified:
             unverified["nrv"] = unverified.get("nrv", 0) + 1
         nrv_keys.add((r["jurisdiction"], r["nutrient"]))
-        cur.execute(
-            "INSERT INTO nrv VALUES (?,?,?,?,?,?,?)",
-            (r["jurisdiction"], r["nutrient"], to_amount(r, "value"), r["unit"], r["standard"],
-             r["standard_version"], verified),
-        )
+        try:
+            cur.execute(
+                "INSERT INTO nrv VALUES (?,?,?,?,?,?,?)",
+                (r["jurisdiction"], r["nutrient"], to_amount(r, "value"), r["unit"], r["standard"],
+                 r["standard_version"], verified),
+            )
+        except sqlite3.IntegrityError:
+            raise BuildError(f"{r['__line__']}: 营养素参考值重复（{r['jurisdiction']} {r['nutrient']} "
+                             f"{r['standard_version']}）") from None
 
     # %NRV 规则必须有对应的 NRV 数值
     for jur, nutrient in cur.execute(

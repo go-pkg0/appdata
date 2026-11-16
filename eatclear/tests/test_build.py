@@ -319,6 +319,34 @@ class TestSchema3(BuildTestCase):
             with self.subTest(value=value):
                 self.build_fails_with("allergens.csv", f"testkey,测试类,{value}")
 
+    def test_sort_order_must_be_integer_in_law_files(self):
+        for value in ("1.5", "inf", "一"):
+            with self.subTest(file="law/categories.csv", value=value):
+                self.build_fails_with("law/categories.csv", f"zz-test,CN,{value},测试,测试")
+            with self.subTest(file="law article", value=value):
+                path = self.source / "law" / "zz-test.md"
+                path.write_text(
+                    "---\nid: test-x\njurisdiction: CN\ncategory: label\n"
+                    f"sort_order: {value}\ntitle: 测试\nsummary: 测试\nupdated_at: 2026-11-14\n"
+                    "link: 国家法律法规数据库 | https://flk.npc.gov.cn/\n---\n正文", encoding="utf-8")
+                with mock.patch("sys.stderr"):
+                    self.assertEqual(self.run_build(), 1)
+                path.unlink()
+
+    def test_claim_rules_and_nutrient_names_have_no_sort_order(self):
+        # 这两张表没有 sort_order 列；加了多余的列不会被读，这里只固定"现有表头里没有它"
+        for name in ("claim_rules.csv", "nutrient_names.csv"):
+            header = (self.source / name).read_text(encoding="utf-8-sig").splitlines()[0].split(",")
+            self.assertNotIn("sort_order", header)
+
+    def test_duplicate_nrv_row_is_a_build_error_with_line(self):
+        self.append("nrv.csv", "CN,energy,8400,kJ,GB 28050,2011,0")
+        with mock.patch("sys.stderr") as err:
+            self.assertEqual(self.run_build(), 1)
+        written = "".join(call.args[0] for call in err.write.call_args_list)
+        self.assertIn("nrv.csv", written)
+        self.assertRegex(written, r"\d+")
+
     def test_duplicate_primary_keys_become_build_errors(self):
         with mock.patch("sys.stderr"):
             self.build_fails_with("claim_rules.csv",

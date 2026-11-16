@@ -131,3 +131,8 @@ term,allergen_key,kind
 玉米面粉,gluten,not_allergen
 荞麦面粉,gluten,not_allergen
 鱼香,fish,not_allergen
+发酵乳杆菌,milk,not_allergen
+发酵乳酸杆菌,milk,not_allergen
+发酵乳酸菌,milk,not_allergen
+干酪乳杆菌,milk,not_allergen
+副干酪乳杆菌,milk,not_allergen
