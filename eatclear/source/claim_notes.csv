@@ -1,0 +1,22 @@
+jurisdiction,claim_key,claim_name_zh,kind,explain
+CN,sucrose_free,0蔗糖,non_regulated,这个说法在 GB 28050 里没有对应的数值定义，无法用营养成分表对照。可以看看“懂法”里关于“0蔗糖”的说明。
+CN,reduced_energy,减少能量,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_protein,增加蛋白质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_protein,减少蛋白质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_fat,减少脂肪,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_cholesterol,减少胆固醇,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_carbohydrate,减少碳水化合物,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_sugar,减少糖,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_fiber,增加膳食纤维,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_sodium,减少钠,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_vitamin,增加维生素,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_saturated_fat,减少饱和脂肪,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_carbohydrate,增加碳水化合物,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_fiber,减少膳食纤维,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,increased_mineral,增加矿物质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_mineral,减少矿物质,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,reduced_vitamin,减少维生素,comparative,这是和同类食品比较的说法。只看这一包的营养成分表，没有可以比较的数字，所以无法对照。
+CN,ambiguous_sugar,少糖,ambiguous,在现行的 GB 28050-2011 里，“少”既是“低”的同义语（有具体的数值要求），也是“减少”的同义语（要和同类食品比较）。包装上没有写明是哪一种，所以无法对照。
+CN,ambiguous_sodium,少盐（少钠）,ambiguous,在现行的 GB 28050-2011 里，“少”既是“低”的同义语（有具体的数值要求），也是“减少”的同义语（要和同类食品比较）。包装上没有写明是哪一种，所以无法对照。
+CN,ambiguous_fat,少脂,ambiguous,在现行的 GB 28050-2011 里，“少”既是“低”的同义语（有具体的数值要求），也是“减少”的同义语（要和同类食品比较）。包装上没有写明是哪一种，所以无法对照。
+CN,low_sodium_salt,低钠盐,non_regulated,“低钠盐”是一种食盐的名称，不是对营养成分表上钠含量的声称，所以不用 GB 28050 的“低钠”来对照。

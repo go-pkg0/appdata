@@ -1,0 +1,64 @@
+note_id,tier,org,title,year,url,method,study_type,verified
+n-sugar,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 28050-2025《预包装食品营养标签通则》2.4 糖,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773905.html,只作说明：营养成分表上的糖是总糖,,0
+n-sugar,1,中国营养学会（湖北省卫生健康委员会网站转载）,《中国居民膳食指南（2022）》准则五 少盐少油，控糖限酒,2022,https://wjw.hubei.gov.cn/bmdt/jkhb/spyy/202205/t20220520_4135821.shtml,无法直接对照：标签标的是总糖，建议量针对的是添加糖,,0
+n-sugar,2,世界卫生组织（WHO）,WHO calls on countries to reduce sugars intake among adults and children（Guideline: sugars intake for adults and children）,2015,https://www.who.int/news/item/04-03-2015-who-calls-on-countries-to-reduce-sugars-intake-among-adults-and-children,无法直接对照：标签标的是总糖，建议量针对的是游离糖,,0
+n-sugar,3,BMJ,Dietary sugar consumption and health: umbrella review,2023,https://doi.org/10.1136/bmj-2022-071609,只作说明，不做数值对照,系统综述,0
+n-sodium,1,国家卫生健康委员会（原卫生部）,GB 28050-2011《预包装食品营养标签通则》附录A 表A.1,2011,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605104041625.pdf,用每100克（或每100毫升）的钠含量，和营养素参考值2000毫克相比，得出 NRV%,,0
+n-sodium,1,中国营养学会（湖北省卫生健康委员会网站转载）,《中国居民膳食指南（2022）》准则五 少盐少油，控糖限酒,2022,https://wjw.hubei.gov.cn/bmdt/jkhb/spyy/202205/t20220520_4135821.shtml,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-sodium,2,世界卫生组织（WHO）,Sodium reduction（fact sheet）,2026,https://www.who.int/news-room/fact-sheets/detail/sodium-reduction,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-sodium,3,BMJ,Effect of dose and duration of reduction in dietary sodium on blood pressure levels: systematic review and meta-analysis of randomised trials,2020,https://doi.org/10.1136/bmj.m315,只作说明，不做数值对照,荟萃分析,0
+n-fat,1,国家卫生健康委员会（原卫生部）,GB 28050-2011《预包装食品营养标签通则》附录A 表A.1,2011,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605104041625.pdf,用每100克（或每100毫升）的脂肪含量，和营养素参考值60克相比，得出 NRV%,,0
+n-fat,1,中国营养学会（湖北省卫生健康委员会网站转载）,《中国居民膳食指南（2022）》准则五 少盐少油，控糖限酒,2022,https://wjw.hubei.gov.cn/bmdt/jkhb/spyy/202205/t20220520_4135821.shtml,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-fat,2,世界卫生组织（WHO）,WHO updates guidelines on fats and carbohydrates,2023,https://www.who.int/news/item/17-07-2023-who-updates-guidelines-on-fats-and-carbohydrates,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-saturated-fat,1,国家卫生健康委员会（原卫生部）,GB 28050-2011《预包装食品营养标签通则》4.1、附录A 表A.1,2011,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605104041625.pdf,用每100克（或每100毫升）的饱和脂肪含量，和营养素参考值20克相比，得出 NRV%,,0
+n-saturated-fat,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 28050-2025《预包装食品营养标签通则》4.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773905.html,只作说明：新版要求必须标示饱和脂肪,,0
+n-saturated-fat,2,世界卫生组织（WHO）,WHO updates guidelines on fats and carbohydrates,2023,https://www.who.int/news/item/17-07-2023-who-updates-guidelines-on-fats-and-carbohydrates,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-trans-fat,1,国家卫生健康委员会（原卫生部）,GB 28050-2011《预包装食品营养标签通则》4.4、附录C 表C.1,2011,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605104041625.pdf,用每100克（或每100毫升）的反式脂肪含量，和“无反式脂肪酸”声称的上限0.3克相比,,0
+n-trans-fat,1,中国营养学会（湖北省卫生健康委员会网站转载）,《中国居民膳食指南（2022）》准则五 少盐少油，控糖限酒,2022,https://wjw.hubei.gov.cn/bmdt/jkhb/spyy/202205/t20220520_4135821.shtml,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-trans-fat,2,世界卫生组织（WHO）,WHO updates guidelines on fats and carbohydrates,2023,https://www.who.int/news/item/17-07-2023-who-updates-guidelines-on-fats-and-carbohydrates,只作说明：建议量是一天吃的总量，不和单个商品对照,,0
+n-trans-fat,3,BMJ,"Intake of saturated and trans unsaturated fatty acids and risk of all cause mortality, cardiovascular disease, and type 2 diabetes: systematic review and meta-analysis of observational studies",2015,https://doi.org/10.1136/bmj.h3978,只作说明，不做数值对照,荟萃分析,0
+a-gluten,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-gluten,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-crustacean,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-crustacean,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-fish,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-fish,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-egg,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-egg,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-peanut,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-peanut,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-soy,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-soy,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-milk,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-milk,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-nut,1,国家卫生健康委员会（原卫生部）,GB 7718-2011《预包装食品标签通则》4.4.3.1,2011,https://www.nhc.gov.cn/zwgkzt/cybz/201106/a054a6affd0e489da150cf2b51a971a7/files/e84256474d1445919246b4a41a87f172.pdf,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+a-nut,1,国家卫生健康委员会、国家市场监督管理总局（广东省疾病预防控制中心网站转载）,GB 7718-2025《预包装食品标签通则》4.12.1,2025,https://cdcp.gd.gov.cn/zwgk/jsbzywj/content/post_4773893.html,只作说明：看包装上有没有致敏物质提示，不做数值对照,,0
+f-01,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-02,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-03,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-04,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-05,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-06,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-07,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-08,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-09,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-10,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-11,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-12,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-13,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-14,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-other,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-sweetener,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》附录D 食品添加剂功能类别,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-sweetener,2,世界卫生组织（WHO）,WHO advises not to use non-sugar sweeteners for weight control in newly released guideline（Use of non-sugar sweeteners: WHO guideline）,2023,https://www.who.int/news/item/15-05-2023-who-advises-not-to-use-non-sugar-sweeteners-for-weight-control-in-newly-released-guideline,只作说明，不做数值对照,,0
+f-sweetener,3,BMJ,Association between intake of non-sugar sweeteners and health outcomes: systematic review and meta-analyses of randomised and non-randomised controlled trials and observational studies,2019,https://doi.org/10.1136/bmj.k4718,只作说明，不做数值对照,系统综述,0
+f-fortifier,1,国家卫生健康委员会（原卫生部）,GB 14880-2012《食品营养强化剂使用标准》2.1、附录B 表B.1,2012,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605103746593.pdf,只作说明：配料表没有用量，不做数值对照,,0
+f-fortifier,1,国家卫生健康委员会（原卫生部）,GB 28050-2011《预包装食品营养标签通则》4.3,2011,https://www.nhc.gov.cn/ewebeditor/uploadfile/2013/06/20130605104041625.pdf,只作说明：强化的营养成分要在营养成分表里标出含量,,0
+s-INS951,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》表A.1 阿斯巴甜,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表里有阿斯巴甜时，看是否标明“含苯丙氨酸”,,0
+s-INS951,2,世界卫生组织（WHO）、国际癌症研究机构（IARC）,《阿斯巴甜危害及风险评估结果发布》,2023,https://www.who.int/zh/news/item/14-07-2023-aspartame-hazard-and-risk-assessment-results-released,只作说明：IARC 的分类反映证据强弱，不是摄入量,,0
+s-INS951,2,联合国粮农组织/世界卫生组织食品添加剂联合专家委员会（JECFA）,Summary of findings of the evaluation of aspartame（IARC 第134次会议、JECFA 第96次会议）,2023,https://cdn.who.int/media/docs/default-source/nutrition-and-food-safety/jecfa-summary-of-findings-aspartame.pdf,无法对照：每日允许摄入量按体重计，配料表没有用量,,0
+s-INS950,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》表A.1 安赛蜜,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+s-INS950,2,联合国粮农组织/世界卫生组织食品添加剂联合专家委员会（JECFA）,JECFA 评估数据库：安赛蜜,1990,https://apps.who.int/food-additives-contaminants-jecfa-database/Home/Chemical/926,无法对照：每日允许摄入量按体重计，配料表没有用量,,0
+s-INS955,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》表A.1 三氯蔗糖,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+s-INS955,2,联合国粮农组织/世界卫生组织食品添加剂联合专家委员会（JECFA）,JECFA 评估数据库：三氯蔗糖,1990,https://apps.who.int/food-additives-contaminants-jecfa-database/Home/Chemical/2340,无法对照：每日允许摄入量按体重计，配料表没有用量,,0
+s-INS960,1,国家卫生健康委员会、国家市场监督管理总局（广东省粮食和物资储备局网站转载）,GB 2760-2024《食品添加剂使用标准》表A.1 甜菊糖苷,2024,https://gdgrain.gd.gov.cn/attachment/0/561/561845/4506199.pdf,只作说明：配料表没有用量，不做数值对照,,0
+s-INS960,2,联合国粮农组织/世界卫生组织食品添加剂联合专家委员会（JECFA）,JECFA 评估数据库：甜菊糖苷,2026,https://apps.who.int/food-additives-contaminants-jecfa-database/Home/Chemical/267,无法对照：每日允许摄入量按体重计，配料表没有用量,,0

@@ -3,7 +3,7 @@
 --   1. 一开始就支持多国家/地区（jurisdiction: CN, EU, US, CODEX）
 --   2. 每条规定都记录标准名称、版本、实施日期和原文出处，方便核查
 --   3. verified = 1 表示已经对照官方原文核实；0 表示待核实，App 会显示提示
--- 修改结构时，请同时提高 data/build.py 里的 SCHEMA_VERSION。
+-- 修改结构时，请同时提高 eatclear/build.py 里的 SCHEMA_VERSION。
 
 PRAGMA foreign_keys = ON;
 
@@ -21,7 +21,10 @@ CREATE TABLE substances (
     name_zh        TEXT NOT NULL,
     name_en        TEXT,
     function_class TEXT NOT NULL,   -- 功能类别，如 防腐剂、甜味剂、着色剂
-    note           TEXT
+    note           TEXT,
+    -- 用途：additive 添加剂（GB 2760）、fortifier 营养强化剂（GB 14880），两者都是写 additive|fortifier
+    roles          TEXT NOT NULL DEFAULT 'additive'
+        CHECK (roles IN ('additive', 'fortifier', 'additive|fortifier'))
 );
 
 -- 别名：配料表上可能出现的各种写法，用于匹配 OCR 结果
@@ -76,7 +79,27 @@ CREATE TABLE claim_rules (
     source_ref       TEXT NOT NULL,
     effective_from   TEXT,
     verified         INTEGER NOT NULL DEFAULT 0,
+    -- 标准里的限制性条件（如"仅指乳品类"），用一两句大白话写；NULL 表示没有。
+    -- 有条件的规则：数值不满足时 App 显示"存在差异"，满足时显示"无法对照"并附上这段文字，不显示"一致"
+    condition        TEXT,
+    -- 标准给出的"每420千焦"替代要求，单位和 threshold 相同；NULL 表示没有。
+    -- 按 basis 不满足时，App 用能量一行换算成每420千焦再比一次
+    per420kj_threshold REAL,
     PRIMARY KEY (jurisdiction, claim_key, basis, standard_version)
+);
+
+-- 识别得出、但不能用营养成分表数值对照的说法，附上给用户看的原因
+-- comparative：比较类声称（如"减盐"），要和同类产品比，包装上的数字不够；
+-- non_regulated：标准里没有对应数值定义的说法（如"0蔗糖"）；
+-- ambiguous：同一个写法在现行标准里有两种意思（如"少糖"可以是"低糖"也可以是"减少糖"），包装上看不出是哪一种
+-- 同一个 claim_key 只能在 claim_rules 或 claim_notes 其中之一出现（由构建脚本检查）
+CREATE TABLE claim_notes (
+    jurisdiction  TEXT NOT NULL,
+    claim_key     TEXT NOT NULL,
+    claim_name_zh TEXT NOT NULL,
+    kind          TEXT NOT NULL CHECK (kind IN ('comparative', 'non_regulated', 'ambiguous')),
+    explain       TEXT NOT NULL,          -- 为什么无法对照，给用户看的一两句话
+    PRIMARY KEY (jurisdiction, claim_key)
 );
 
 -- 包装上的说法和规则的对应关系，如 "0糖" "不含糖" -> sugar_free
@@ -135,4 +158,70 @@ CREATE TABLE law_links (
     title        TEXT NOT NULL,
     url          TEXT NOT NULL,      -- https，域名在 build.py 的 LINK_DOMAINS 里
     PRIMARY KEY (article_id, sort_order)
+);
+
+-- 可调的数值设置，如一块方糖按多少克换算
+CREATE TABLE settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    note  TEXT
+);
+
+-- 标签上固定的提示用语，用于识别致敏物质提示段、适用人群、注意事项、标准号、商品名等
+-- phrase_norm 是归一化后的写法，由构建脚本生成
+CREATE TABLE label_phrases (
+    kind        TEXT NOT NULL CHECK (kind IN ('allergen_section', 'allergen_may_contain',
+                                              'audience', 'notice', 'standard_code', 'product_name')),
+    phrase      TEXT NOT NULL,
+    phrase_norm TEXT NOT NULL,
+    PRIMARY KEY (kind, phrase_norm)
+);
+
+-- 致敏物质分类（如 牛奶、鸡蛋、花生）
+CREATE TABLE allergens (
+    key        TEXT PRIMARY KEY,
+    name_zh    TEXT NOT NULL,
+    sort_order INTEGER NOT NULL
+);
+
+-- 致敏物质的各种写法
+-- statement：出现在"致敏物质提示"里的写法；ingredient：出现在配料表里的写法；
+-- exempt：标准（GB 7718-2025 附录D.4）写明可以免于致敏物质标示的配料（如精炼大豆油）；
+-- not_allergen：字面上含有某类致敏物质的写法，但并不是这类物质（如"鱿鱼"不是鱼类，"花生四烯酸"不是花生）。
+-- 这两种的 allergen_key 都是它本来会被匹配到的类别。App 按最长写法匹配，被它们占住的文字不再算作致敏物质
+CREATE TABLE allergen_terms (
+    term         TEXT NOT NULL,
+    term_norm    TEXT NOT NULL,
+    allergen_key TEXT NOT NULL REFERENCES allergens(key),
+    kind         TEXT NOT NULL CHECK (kind IN ('statement', 'ingredient', 'exempt', 'not_allergen')),
+    PRIMARY KEY (term_norm, kind)
+);
+
+-- 大白话说明：营养素、致敏物质、功能类别、添加剂的解释和小知识
+-- subject_key：nutrient 为营养素 key，allergen 为致敏物质 key，function_class 为功能类别名，
+-- substance 为物质 id，tip 为小知识自己的 id
+CREATE TABLE notes (
+    id           TEXT PRIMARY KEY,
+    subject_type TEXT NOT NULL CHECK (subject_type IN ('nutrient', 'allergen', 'function_class', 'substance', 'tip')),
+    subject_key  TEXT NOT NULL,
+    title        TEXT NOT NULL,
+    body         TEXT NOT NULL,     -- 大白话说明，2~4 句
+    verified     INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (subject_type, subject_key)
+);
+
+-- 说明的依据。tier 1：国标、膳食指南；2：WHO/IARC、JECFA、EFSA、FDA 等机构；3：期刊综述（只收 DOI 链接）
+CREATE TABLE note_sources (
+    note_id    TEXT NOT NULL REFERENCES notes(id),
+    sort_order INTEGER NOT NULL,
+    tier       INTEGER NOT NULL CHECK (tier IN (1, 2, 3)),
+    org        TEXT NOT NULL,       -- 机构或期刊
+    title      TEXT NOT NULL,       -- 文件名或论文标题
+    year       INTEGER NOT NULL,
+    url        TEXT NOT NULL,       -- https，域名在 build.py 的 TIER_DOMAINS 里
+    method     TEXT NOT NULL,       -- 判定方式：一句话写清"拿什么和什么比"；只作说明时写"只作说明，不做数值对照"
+    study_type TEXT,                -- 级别 3 必填：系统综述 / 荟萃分析
+    is_dated   INTEGER NOT NULL DEFAULT 0,   -- 级别 3 且 构建年份 - year > 10
+    verified   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (note_id, sort_order)
 );
